@@ -1,0 +1,5 @@
+STEINWURF LICENSE
+=================
+
+This software can either licensed with `STEINWURF RESEARCH LICENSE <LICENSE_RESEARCH.rst>`_ or
+`STEINWURF EVALUATION LICENSE <LICENSE_EVALUATION.rst>`_.

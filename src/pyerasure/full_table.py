@@ -17,16 +17,16 @@ from . import online
 
 class full_table:
 
-    def __init__(self, p):
+    def __init__(self, polynomial):
         """
         Precomputes and creates two lookup table for multiplying
         and dividing elements in a given 2^m binary extension field.
 
-        p, the irreducible polynomial used
-        m, the degree of the irreducible polynomial
+        polynomial, the irreducible polynomial used
         """
 
-        self.degree = online.find_degree(p)
+        self.polynomial = polynomial
+        self.degree = online.find_degree(polynomial)
 
         # The number of elements in the field
         self.order = 1 << self.degree
@@ -39,12 +39,12 @@ class full_table:
             offset = i * self.order
 
             for j in range(self.order):
-                self.multiply_table[offset+j] = online.multiply(i, j, p)
+                self.multiply_table[offset+j] = online.multiply(i, j, polynomial)
 
                 if j == 0: # Cannot divide by zero
                     continue
 
-                self.division_table[offset+j] = online.divide(i, j, p)
+                self.division_table[offset+j] = online.divide(i, j, polynomial)
 
     def multiply(self, a, b):
         """
@@ -77,7 +77,7 @@ class full_table:
         """
         print("Degree: ", self.degree)
         print("Order: ", self.order)
-        online.print_polynomial(self.p)
+        print("Polynomial: ", online.polynomial_to_string(self.polynomial))
 
         print("Multiply table")
         for i in range(len(self.multiply_table)):

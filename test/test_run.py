@@ -5,11 +5,7 @@ import pyerasure
 
 
 def test_run():
-    polynomial = 37
 
-    table = pyerasure.full_table(polynomial)
+    table = pyerasure.full_table(polynomial=37)
     table.print()
 
-    assert(False)
-
-    pass

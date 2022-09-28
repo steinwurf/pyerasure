@@ -3,4 +3,3 @@
 
 
 from .full_table import full_table
-from .online import print_polynomial
