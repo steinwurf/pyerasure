@@ -77,6 +77,7 @@ class full_table:
         """
         print("Degree: ", self.degree)
         print("Order: ", self.order)
+        online.print_polynomial(self.p)
 
         print("Multiply table")
         for i in range(len(self.multiply_table)):

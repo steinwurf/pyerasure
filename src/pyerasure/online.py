@@ -13,6 +13,20 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+def print_polynomial(a):
+    """ Print the polynomial representation of a finite field value
+
+    a, the polynomial to print
+    """
+    degree = find_degree(a)
+
+    for i in range(degree, -1, -1):
+        if a & (1 << i):
+            print("X^%d + " % i, end="")
+
+    print("0")
+
+
 def find_degree(a):
     """
     Finds returns the degree of the polynomial
