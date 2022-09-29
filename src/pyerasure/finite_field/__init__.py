@@ -13,5 +13,5 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-from .encoder import Encoder
-from .decoder import Decoder
+
+from .full_table import FullTable

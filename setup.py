@@ -28,11 +28,11 @@ def file_find_version(filepath):
             =            #    Match and equal sign
             \s*          #    Match zero or more spaces
         )                # End group
-        '
+        "                # Match a double quote
         (                # Group and match
-            \d\.\d\.\d  #    Match digit.digit.digit e.g. 1.2.3
+            \d\.\d\.\d   #    Match digit.digit.digit e.g. 1.2.3
         )                # End of group
-        '
+        "                # Match a double quote
         """,
             re.VERBOSE,
         )
@@ -65,29 +65,34 @@ VERSION = find_version()
 setup(
     name="pyerasure",
     version=VERSION,
-    description=("A tool for leaning erasure codes"),
+    description=("A tool for learning erasure codes"),
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url="https://github.com/steinwurf/",
     author="Steinwurf ApS",
     author_email="contact@steinwurf.com",
-    license='BSD 3-clause "New" or "Revised" License',
+    license="PyErasure Research License 1.2 / Evaluation License 1.3",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python",
-        "Topic :: Documentation",
-        "Topic :: Software Development :: Documentation",
-        "Topic :: Utilities",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Topic :: Communications",
+        "Topic :: Education",
     ],
-    keywords=("pyerasure"),
+    keywords=(
+        "pyerasure",
+        "erasure",
+        "coding",
+        "reed-solomon",
+        "rlnc",
+        "network coding",
+    ),
     packages=find_packages(where="src", exclude=["test"]),
     package_dir={"": "src"},
-    install_requires=['Rich'],
+    install_requires=[""],
 )

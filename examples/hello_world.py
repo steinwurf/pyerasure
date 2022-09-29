@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
 # License for Commercial Usage
 # Distributed under the "PYERASURE EVALUATION LICENSE 1.3"
 # Licensees holding a valid commercial license may use this project in
@@ -13,5 +16,16 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-from .encoder import Encoder
-from .decoder import Decoder
+
+import pyerasure
+
+
+def main():
+    """A simple hello world example."""
+
+    # Print the version of the library used
+    print(pyerasure.__version__)
+
+
+if __name__ == "__main__":
+    main()

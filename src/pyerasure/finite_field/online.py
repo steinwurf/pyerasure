@@ -1,5 +1,5 @@
 # License for Commercial Usage
-# Distributed under the "KODO EVALUATION LICENSE 1.3"
+# Distributed under the "PYERASURE EVALUATION LICENSE 1.3"
 # Licensees holding a valid commercial license may use this project in
 # accordance with the standard license agreement terms provided with the
 # Software (see accompanying file LICENSE.rst or
@@ -8,13 +8,14 @@
 # case the license will be regulated by that separate written agreement.
 #
 # License for Non-Commercial Usage
-# Distributed under the "KODO RESEARCH LICENSE 1.2"
+# Distributed under the "PYERASURE RESEARCH LICENSE 1.2"
 # Licensees holding a valid research license may use this project in accordance
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+
 def polynomial_to_string(a):
-    """ Print the polynomial representation of a finite field value
+    """Print the polynomial representation of a finite field value
 
     a, the polynomial to print
     """
@@ -25,9 +26,9 @@ def polynomial_to_string(a):
         if not a & (1 << i):
             continue
 
-        if (i > 1):
+        if i > 1:
             polynomial = polynomial + "X^%d + " % i
-        elif(i == 1):
+        elif i == 1:
             polynomial = polynomial + "X + "
         else:
             polynomial = polynomial + "1"
@@ -46,11 +47,12 @@ def find_degree(a):
 
     a = a >> 1
 
-    while(a > 0):
+    while a > 0:
         degree = degree + 1
         a = a >> 1
 
     return degree
+
 
 def multiply(a, b, p):
     """
@@ -68,7 +70,7 @@ def multiply(a, b, p):
     degree = find_degree(p)
 
     # Mask to check if the degree is about to reach m
-    mask = 1 << (degree-1)
+    mask = 1 << (degree - 1)
     highbit = 0
 
     # The resulting polynomial
@@ -112,7 +114,7 @@ def inverse(a, p):
 
     j = 0
 
-    while(r_large != 1):
+    while r_large != 1:
 
         j = find_degree(r_large) - find_degree(r_small)
 
@@ -127,6 +129,7 @@ def inverse(a, p):
 
     return y_large
 
+
 def divide(a, b, p):
     """
     Divides the two input polynomials and find the resulting
@@ -137,5 +140,5 @@ def divide(a, b, p):
     p, the prime polynomial
     m, the degree of the prime polynomial
     """
-    value = inverse(b,p)
+    value = inverse(b, p)
     return multiply(value, a, p)
