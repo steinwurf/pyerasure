@@ -14,5 +14,4 @@
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
 
-from .full_table import FullTable
-from .binary import Binary
+from .random_uniform import RandomUniform

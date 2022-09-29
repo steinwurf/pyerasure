@@ -17,7 +17,7 @@
 class Encoder:
     """The encoder class is used to encode a set of symbols."""
 
-    def __init__(self, field, symbols, symbol_bytes):
+    def __init__(self, field, symbols: int, symbol_bytes: int):
         """
         The encoder constructor.
 
@@ -25,64 +25,92 @@ class Encoder:
         :param symbols: The number of symbols.
         :param symbol_bytes: The size of a symbol in bytes.
         """
-        self.field = field
-        self.symbols = symbols
-        self.symbol_bytes = symbol_bytes
+        self._field = field
+        self._symbols = symbols
+        self._symbol_bytes = symbol_bytes
         self._rank = 0
+        self._symbols_data = [None] * symbols
 
     @property
-    def symbols(self):
+    def symbols(self) -> int:
         """The number of symbols."""
-        return self.symbols
+        return self._symbols
 
     @property
-    def symbol_bytes(self):
+    def symbol_bytes(self) -> int:
         """The size of a symbol in bytes."""
-        return self.symbol_bytes
+        return self._symbol_bytes
 
     @property
     def field(self):
         """The chosen finite field."""
-        return self.field
+        return self._field
 
     @property
-    def block_bytes(self):
+    def block_bytes(self) -> int:
         """The size of the block in bytes."""
-        return self.symbols * self.symbol_bytes
+        return self._symbols * self._symbol_bytes
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         """The rank of the encoding matrix, i.e., the number of symbols."""
         return self._rank
 
-    def set_symbol(self, index, data):
+    def set_symbol(self, index: int, symbol_data: bytes):
         """
         Set a symbol.
 
         :param index: The index of the symbol.
-        :param data: The data of the symbol.
+        :param symbol_data: The data of the symbol.
         """
-        pass
+        if len(symbol_data) != self._symbol_bytes:
+            raise ValueError(f"Invalid symbol size {len(symbol_data)}.")
+        if index >= self._symbols:
+            raise ValueError(f"Invalid symbol index. {index}")
+        if index != self._rank:
+            raise ValueError("Symbols must be set in order.")
+        self._symbols_data[index] = symbol_data
+        self._rank += 1
 
-    def is_symbol_set(self, index):
+    def set_symbols(self, block_data: bytes):
+        """
+        Set all symbols.
+
+        :param block_data: The data of the block.
+        """
+        if len(block_data) != self.block_bytes:
+            raise ValueError(f"Invalid block size {block_data}.")
+        for index in range(self._symbols):
+            self.set_symbol(
+                index,
+                block_data[
+                    index * self._symbol_bytes : (index + 1) * self._symbol_bytes
+                ],
+            )
+
+    def is_symbol_set(self, index: int) -> bool:
         """
         Check if a symbol is set.
 
         :param index: The index of the symbol.
         :return: True if the symbol set.
         """
-        return False
+        if index >= self._symbols:
+            raise ValueError("Invalid symbol index.")
+        return self._symbols[index] is not None
 
-    def symbol_data(self, index):
+    def symbol_data(self, index: int) -> bytes:
         """
         Get the data of a symbol.
 
         :param index: The index of the symbol.
         :return: The data of the symbol.
         """
-        pass
+        if index >= self._symbols:
+            raise ValueError("Invalid symbol index.")
+        return self._symbols_data[index]
 
-    def encode_symbol(self, coefficients):
+    def encode_symbol(self, coefficients: bytes) -> bytearray:
         """
         Encode a symbol based on the given coefficients.
 
@@ -90,4 +118,17 @@ class Encoder:
                              encoding.
         :return: The encoded symbol.
         """
-        pass
+        encoded_symbol = bytearray(self._symbol_bytes)
+        for index in range(self._rank):
+            coefficient = self._field.get_value(coefficients, index)
+            if coefficient == 0:
+                continue
+
+            if not self.is_symbol_set(index):
+                raise ValueError(f"Symbol not set: {index}")
+
+            self._field.vector_multiply_add_into(
+                encoded_symbol, self.symbol_data(index), coefficient
+            )
+
+        return encoded_symbol
