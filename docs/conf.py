@@ -79,15 +79,15 @@ html_sidebars = {
 # documentation.
 #
 html_theme_options = {
-    "h1_background_color": "a771b91A",
-    "sidebar_hover_color": "a771b9aA",
-    "logo_text_background_color": "a771b9",
-    "link_color": "a771b9",
-    "link_hover_color": "785185",
-    "code_color": "6f16ab",
-    "target_highlight_color": "a771b9",
-    "highlighted_color": "d6afe3",
-    "search_form_focus_color": "d6afe3",
+    "h1_background_color": "0022551A",
+    "sidebar_hover_color": "002255aA",
+    "logo_text_background_color": "002255",
+    "link_color": "002255",
+    "link_hover_color": "061a38",
+    "code_color": "13499c",
+    "target_highlight_color": "002255",
+    "highlighted_color": "00B5F4",
+    "search_form_focus_color": "00B5F4",
 }
 
 # The name of an image file (relative to this directory) to place at the top
