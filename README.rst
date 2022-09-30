@@ -1,3 +1,7 @@
+.. image:: ./docs/images/icon.svg
+   :height: 200px
+   :align: center
+
 Introduction
 ============
 
@@ -9,8 +13,8 @@ Introduction
 .. |Waf Python Tests| image:: https://github.com/steinwurf/pyerasure/actions/workflows/waf.yml/badge.svg
    :target: https://github.com/steinwurf/pyerasure/actions/workflows/waf.yml
 
-.. |Flake8| image:: https://github.com/steinwurf/pyerasure/actions/workflows/flake8.yml/badge.svg
-    :target: https://github.com/steinwurf/pyerasure/actions/workflows/flake8.yml
+.. |Flake8| image:: https://github.com/steinwurf/pyerasure/actions/workflows/flake.yml/badge.svg
+    :target: https://github.com/steinwurf/pyerasure/actions/workflows/flake.yml
 
 .. |Black| image:: https://github.com/steinwurf/pyerasure/actions/workflows/black.yml/badge.svg
       :target: https://github.com/steinwurf/pyerasure/actions/workflows/black.yml
@@ -22,16 +26,9 @@ What it is:
 
 * A tool for learning erasure codes
 
-
-Demonstration
--------------
-
-.. image:: demo.gif
-
 Installation
 ------------
 
 1. Install the ``pyerasure`` tool using ``pip``::
 
       python -m pip install pyerasure
-
