@@ -9,3 +9,4 @@ own application.
    :glob:
 
    hello_world
+   *

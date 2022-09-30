@@ -8,5 +8,6 @@ Overview of the API.
    :maxdepth: 2
 
    finite_field
+   generator
    encoder
    decoder
