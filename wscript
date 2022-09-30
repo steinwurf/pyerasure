@@ -134,7 +134,7 @@ def _pytest(bld, venv):
     venv.run(f"python -B -m pytest {test_filter} --basetemp {basetemp}")
 
     # Check the package
-    venv.run(f"python -m pip install twine==3.8.0")
+    venv.run(f"python -m pip install twine==3.7.1")
     venv.run(f"twine check {wheel}")
 
 
