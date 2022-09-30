@@ -8,6 +8,10 @@ Latest
 ------
 * tbd
 
+1.0.1
+-----
+* Patch: Correct readme.
+
 1.0.0
 -----
 * Major: Initial release

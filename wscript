@@ -7,7 +7,7 @@ import waflib
 from waflib.Build import BuildContext
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 class UploadContext(BuildContext):
