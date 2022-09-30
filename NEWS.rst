@@ -6,6 +6,10 @@ every change, see the Git log.
 
 Latest
 ------
+* tbd
+
+1.2.0
+-----
 * Patch: Fix issue with `Binary4`.
 * Minor: Added support for swap decode.
 * Minor: Added support for recoding and added example.
