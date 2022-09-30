@@ -55,8 +55,19 @@ class Binary:
             elements[index // 8] |= 1 << (index % 8)
 
     @classmethod
+    def vector_add_into(cls, x: bytearray, y: bytearray):
+        """Add y into x."""
+        if len(x) != len(y):
+            raise ValueError("x and y must have the same length")
+        for i in range(len(x)):
+            x[i] ^= y[i]
+
+    @classmethod
     def vector_multiply_add_into(cls, x: bytearray, y: bytes, c: int):
-        """Multiply the vector x with the vector y and add the result to c."""
+        """
+        Multiply the vector y with the constant c and then add the result
+        to vector x.
+        """
         assert len(x) == len(y)
         assert c <= cls.max_value
 

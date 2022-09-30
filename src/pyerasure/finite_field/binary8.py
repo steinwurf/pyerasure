@@ -14,6 +14,7 @@
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
 from . import FullTable
+from . import Binary
 
 
 class Binary8:
@@ -63,8 +64,17 @@ class Binary8:
         """Invert the given element."""
         return self._table.divide(1, x)
 
+    @classmethod
+    def vector_add_into(cls, x: bytearray, y: bytearray):
+        """Add y into x."""
+        # Use the binary add function
+        Binary.vector_add_into(x, y)
+
     def vector_multiply_add_into(self, x: bytearray, y: bytes, c: int):
-        """Multiply the vector x with the vector y and add the result to c."""
+        """
+        Multiply the vector y with the constant c and then add the result
+        to vector x.
+        """
         assert len(x) == len(y)
         assert c <= self.max_value
 

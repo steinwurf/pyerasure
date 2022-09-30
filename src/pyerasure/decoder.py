@@ -190,19 +190,20 @@ class Decoder:
 
         if self.is_symbol_pivot(index):
             self.__swap_decode(symbol_data, index)
-            return
 
+        self._rank += 1
+
+        # Store the symbol
         self._symbols_data[index] = symbol_data
         self._coefficients[index] = bytearray(
             self.field.elements_to_bytes(self.symbols)
         )
         self.field.set_value(self.coefficients(index), index, 1)
         self._symbol_status[index] = Decoder.SymbolStatus.DECODED
-        self._rank += 1
 
     def recode_symbol(self, coefficients: bytes) -> Tuple[bytes, bytearray]:
         """
-        Recodes a new symbol based on given the coeffcients and current state
+        Recodes a new symbol based on given the coefficients and current state
         of the decoder.
 
         :param coefficients: These are the coding coefficients.
@@ -280,7 +281,7 @@ class Decoder:
         """
 
         # We found a "1" that nobody else had as pivot, we now
-        # substract this packet from other coded packets
+        # subtract this packet from other coded packets
         # - if they have a "1" at our pivot position
         for index in range(self.symbols):
 
@@ -336,4 +337,18 @@ class Decoder:
         :param symbol_data: The data of the symbol.
         :param index: The index of the symbol.
         """
-        raise NotImplementedError()
+        # extract symbol and coefficients and set the symbol as missing
+        symbol_i = self.symbol_data(index)
+        coefficients_i = self.coefficients(index)
+        self._symbol_status[index] = Decoder.SymbolStatus.MISSING
+        self._rank -= 1
+
+        # Subtract the new pivot symbol
+        self.field.set_value(coefficients_i, index, 0)
+        # Note: add is the same as subtract
+        self.field.vector_add_into(symbol_i, symbol_data)
+
+        # Process the new coded symbol: we know that it must
+        # contain a larger pivot id than the current (unless it is reduced
+        # to all zeroes).
+        self.decode_symbol(symbol_i, coefficients_i)

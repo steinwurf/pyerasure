@@ -39,8 +39,8 @@ class TestBlockEncodeDecode(unittest.TestCase):
 
     def encode_decode_simple_random_uniform(self, field):
 
-        symbol_bytes = 10
-        symbols = 15
+        symbol_bytes = 300
+        symbols = 40
 
         encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
         self.assertEqual(field, encoder.field)
@@ -91,6 +91,94 @@ class TestBlockEncodeDecode(unittest.TestCase):
                 decoder.decode_symbol(symbol, bytearray(coefficients))
 
         for index in range(symbols):
+            self.assertEqual(encoder.symbol_data(index), decoder.symbol_data(index))
+        data_out = decoder.block_data()
+        self.assertEqual(len(data_in), len(data_out))
+        self.assertEqual(data_in, data_out)
+
+    def test_encode_decode_no_systematic(self):
+        random_uniform_fields = [
+            pyerasure.finite_field.Binary(),
+            pyerasure.finite_field.Binary4(),
+            pyerasure.finite_field.Binary8(),
+        ]
+
+        for field in random_uniform_fields:
+            with self.subTest(field):
+                self.encode_decode_no_systematic(field)
+
+    def encode_decode_no_systematic(self, field):
+
+        symbol_bytes = 300
+        symbols = 41
+
+        encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
+        decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
+        generator = pyerasure.generator.RandomUniform(field, encoder.symbols)
+
+        data_in = bytearray(os.urandom(encoder.block_bytes))
+        encoder.set_symbols(data_in)
+
+        iterations = symbols * 2
+
+        while not decoder.is_complete():
+            iterations -= 1
+            self.assertNotEqual(0, iterations)
+
+            coefficients = generator.generate()
+            symbol = encoder.encode_symbol(coefficients)
+            decoder.decode_symbol(symbol, bytearray(coefficients))
+
+        for index in range(symbols):
+            self.assertEqual(encoder.symbol_data(index), decoder.symbol_data(index))
+        data_out = decoder.block_data()
+        self.assertEqual(len(data_in), len(data_out))
+        self.assertEqual(data_in, data_out)
+
+    def test_swap_decode(self):
+        random_uniform_fields = [
+            pyerasure.finite_field.Binary(),
+            pyerasure.finite_field.Binary4(),
+            pyerasure.finite_field.Binary8(),
+        ]
+
+        for field in random_uniform_fields:
+            with self.subTest(field):
+                self.do_swap_decode(field)
+
+    def do_swap_decode(self, field):
+
+        symbol_bytes = 30
+        symbols = 11
+
+        encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
+        decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
+        generator = pyerasure.generator.RandomUniform(field, encoder.symbols)
+
+        generator.set_seed(0)
+        data_in = bytearray(os.urandom(encoder.block_bytes))
+        encoder.set_symbols(data_in)
+
+        coefficients = generator.generate()
+        symbol = encoder.encode_symbol(coefficients)
+        decoder.decode_symbol(symbol, bytearray(coefficients))
+        # Cause a swap in the decoder by decoding an uncoded, i.e., systematic
+        # symbol after decoding a coded symbol.
+        decoder.decode_systematic_symbol(encoder.symbol_data(0), 0)
+        self.assertEqual(2, decoder.rank)
+
+        # Make sure the decoder is still able to decode the rest of the symbols
+        iterations = symbols * 2
+        while not decoder.is_complete():
+            iterations -= 1
+            self.assertNotEqual(0, iterations)
+
+            coefficients = generator.generate()
+            symbol = encoder.encode_symbol(coefficients)
+            decoder.decode_symbol(symbol, bytearray(coefficients))
+
+        for index in range(symbols):
+            print(f"index: {index}")
             self.assertEqual(encoder.symbol_data(index), decoder.symbol_data(index))
         data_out = decoder.block_data()
         self.assertEqual(len(data_in), len(data_out))

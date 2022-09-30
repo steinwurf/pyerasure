@@ -14,6 +14,7 @@
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
 from . import FullTable
+from . import Binary
 
 
 class Binary4:
@@ -48,7 +49,14 @@ class Binary4:
         """Return the value of the element at the given index."""
         if index >= cls.bytes_to_elements(len(elements)):
             raise ValueError("index out of range")
-        return elements[index // 2] >> (4 * (index % 2)) & 0xF
+
+        array_index = index // 2
+        if index % 2 == 1:
+            # Get upper nibble
+            return (elements[array_index] & 0xF0) >> 4
+        else:
+            # Get lower nibble
+            return elements[array_index] & 0x0F
 
     @classmethod
     def set_value(cls, elements: bytearray, index: int, value: int):
@@ -57,14 +65,32 @@ class Binary4:
             raise ValueError("index out of range")
         if value < 0 or value > cls.max_value:
             raise ValueError("value must be between 0 and 15")
-        elements[index // 2] ^= (value & 0xF) << (4 * (index % 2))
+
+        array_index = index // 2
+        if index % 2 == 1:
+            # write upper nibble
+            elements[array_index] &= 0x0F
+            elements[array_index] |= value << 4
+        else:
+            # write lower nibble
+            elements[array_index] &= 0xF0
+            elements[array_index] |= value
 
     def invert(self, x: int) -> int:
         """Invert the given element."""
         return self._table.divide(1, x)
 
+    @classmethod
+    def vector_add_into(cls, x: bytearray, y: bytearray):
+        """Add y into x."""
+        # Use the binary add function
+        Binary.vector_add_into(x, y)
+
     def vector_multiply_add_into(self, x: bytearray, y: bytes, c: int):
-        """Multiply the vector x with the vector y and add the result to c."""
+        """
+        Multiply the vector y with the constant c and then add the result
+        to vector x.
+        """
 
         assert len(x) == len(y)
         assert c <= self.max_value
