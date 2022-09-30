@@ -16,3 +16,4 @@
 
 from .full_table import FullTable
 from .binary import Binary
+from .binary8 import Binary8

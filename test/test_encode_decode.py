@@ -22,11 +22,15 @@ import random
 import unittest
 import pyerasure
 import pyerasure.generator
+import pyerasure.finite_field
 
 
 class TestBlockEncodeDecode(unittest.TestCase):
     def test_encode_decode_simple_random_uniform(self):
-        random_uniform_fields = [pyerasure.finite_field.Binary]
+        random_uniform_fields = [
+            pyerasure.finite_field.Binary(),
+            pyerasure.finite_field.Binary8(),
+        ]
 
         for field in random_uniform_fields:
             with self.subTest(field):
@@ -34,8 +38,8 @@ class TestBlockEncodeDecode(unittest.TestCase):
 
     def encode_decode_simple_random_uniform(self, field):
 
-        symbol_bytes = 1400
-        symbols = 150
+        symbol_bytes = 10
+        symbols = 15
 
         encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
         self.assertEqual(field, encoder.field)
@@ -64,38 +68,31 @@ class TestBlockEncodeDecode(unittest.TestCase):
 
         while not decoder.is_complete():
             iterations -= 1
-
             self.assertNotEqual(0, iterations)
 
+            old_rank = decoder.rank
             if encoder.rank > systematic_index:
-
-                old_rank = decoder.rank
                 index = systematic_index
                 systematic_index += 1
                 symbol = encoder.symbol_data(index)
-
                 if random.randint(0, 100) < loss_probability:
-
                     continue
 
-                else:
-                    decoder.decode_systematic_symbol(symbol, index)
-                    self.assertNotEqual(old_rank, decoder.rank)
-
+                decoder.decode_systematic_symbol(symbol, index)
+                self.assertNotEqual(old_rank, decoder.rank)
             else:
-
-                old_rank = decoder.rank
                 coefficients = generator.generate()
                 symbol = encoder.encode_symbol(coefficients)
 
                 if random.randint(0, 100) < loss_probability:
-
                     continue
 
-                else:
+                decoder.decode_symbol(symbol, bytearray(coefficients))
 
-                    decoder.decode_symbol(symbol, coefficients)
-
+        for index in range(symbols):
+            self.assertEqual(encoder.symbol_data(index), decoder.symbol_data(index))
+        data_out = decoder.block_data()
+        self.assertEqual(len(data_in), len(data_out))
         self.assertEqual(data_in, data_out)
 
 

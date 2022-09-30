@@ -13,6 +13,7 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from typing import Tuple
 from enum import Enum
 
 from pyerasure import finite_field
@@ -40,7 +41,7 @@ class Decoder:
         self._rank = 0
         self._symbols_data = [None] * symbols
         self._coefficients = [None] * symbols
-        self.symbol_status = [Decoder.SymbolStatus.MISSING] * symbols
+        self._symbol_status = [Decoder.SymbolStatus.MISSING] * symbols
 
     @property
     def symbols(self) -> int:
@@ -75,16 +76,68 @@ class Decoder:
         """
         return self._rank == self._symbols
 
-    def symbol_data(self, index: int) -> bytes:
+    def is_symbol_missing(self, index: int) -> bool:
+        """
+        Check if a symbol is missing.
+
+        :param index: The index of the symbol.
+        :return: True if the symbol is missing.
+        """
+        return self._symbol_status[index] == Decoder.SymbolStatus.MISSING
+
+    def is_symbol_pivot(self, index: int) -> bool:
+        """
+        Check if a symbol is a pivot symbol.
+
+        :param index: The index of the symbol.
+        :return: True if the symbol is a pivot symbol.
+        """
+        return self._symbol_status[index] != Decoder.SymbolStatus.MISSING
+
+    def is_symbol_decoded(self, index: int) -> bool:
+        """
+        Check if a symbol is decoded.
+
+        :param index: The index of the symbol.
+        :return: True if the symbol is decoded.
+        """
+        return self._symbol_status[index] == Decoder.SymbolStatus.DECODED
+
+    def symbol_data(self, index: int) -> bytearray:
         """
         Get the data of a symbol.
 
         :param index: The index of the symbol.
         """
-        if index >= self._symbols:
+        if index >= self.symbols:
             raise ValueError(f"Invalid symbol index {index}")
 
         return self._symbols_data[index]
+
+    def block_data(self) -> bytes:
+        """
+        Get the data of the block.
+
+        :return: The data of the block.
+        """
+        if not self.is_complete():
+            raise ValueError("The block is not complete")
+
+        block_data = bytearray()
+        for i in range(self.symbols):
+            block_data.extend(self.symbol_data(i))
+        return block_data
+
+    def coefficients(self, index: int) -> bytearray:
+        """
+        Get the coefficients of a symbol.
+
+        :param index: The index of the symbol.
+        """
+        if index >= self.symbols:
+            raise ValueError(f"Invalid symbol index {index}")
+
+        return self._coefficients[index]
 
     def decode_symbol(self, symbol_data: bytearray, coefficients: bytearray):
         """
@@ -95,7 +148,23 @@ class Decoder:
         :param coefficients: The coding coefficients that describe the
                              encoding performed on the symbol.
         """
-        pass
+        pivot_index = self.__forward_substitute_to_pivot(symbol_data, coefficients)
+        if pivot_index is None:
+            return
+        if not self.field.is_binary():
+            self.__normalize(symbol_data, coefficients, pivot_index)
+        self.__forward_substitute_from_pivot(symbol_data, coefficients, pivot_index)
+        self.__backward_substitute(symbol_data, coefficients, pivot_index)
+
+        # Store coded symbol
+        self._symbols_data[pivot_index] = symbol_data
+        self._coefficients[pivot_index] = coefficients
+        self._symbol_status[pivot_index] = Decoder.SymbolStatus.PARTIALLY_DECODED
+        self._rank += 1
+
+        if self.is_complete():
+            # We have decoded all symbols
+            self._symbol_status = [Decoder.SymbolStatus.DECODED] * self.symbols
 
     def decode_systematic_symbol(self, symbol_data: bytearray, index: int):
         """
@@ -105,26 +174,25 @@ class Decoder:
          bytes in size.
         :param index: The index of the given symbol.
         """
-        if index >= self._symbols:
+        if index >= self.symbols:
             raise ValueError(f"Invalid symbol index {index}")
 
-        if self.symbol_status[index] == Decoder.SymbolStatus.DECODED:
+        if self.is_symbol_decoded(index):
             return
 
-        if self.symbol_status[index] == Decoder.SymbolStatus.PARTIALLY_DECODED:
+        if self.is_symbol_pivot(index):
             self.__swap_decode(symbol_data, index)
+            return
 
-        if self.symbol_status[index] == Decoder.SymbolStatus.MISSING:
-            self._symbols_data[index] = symbol_data
-            self._coefficients[index] = bytearray(self._symbols)
-            self.field.set_value(self._coefficients[index], index, 1)
-            self.symbol_status[index] = Decoder.SymbolStatus.DECODED
-            self._rank += 1
+        self._symbols_data[index] = symbol_data
+        self._coefficients[index] = bytearray(
+            self.field.elements_to_bytes(self.symbols)
+        )
+        self.field.set_value(self.coefficients(index), index, 1)
+        self._symbol_status[index] = Decoder.SymbolStatus.DECODED
+        self._rank += 1
 
-    def __swap_decode(self, symbol_data: bytearray, index: int):
-        pass
-
-    def recode_symbol(self, coefficients: bytes):
+    def recode_symbol(self, coefficients: bytes) -> Tuple[bytes, bytearray]:
         """
         Recodes a new symbol based on given the coeffcients and current state
         of the decoder.
@@ -132,22 +200,132 @@ class Decoder:
         :param coefficients: These are the coding coefficients.
         :return: The recoded symbol and resulting coefficients.
         """
-        return None, None
+        raise NotImplementedError()
 
-    def is_symbol_pivot(self, index: int) -> bool:
+    def __forward_substitute_to_pivot(
+        self, symbol_data: bytearray, coefficients: bytearray
+    ) -> int:
         """
-        Check if a symbol is a pivot symbol.
+        Forward substitute the given symbol to the pivot symbol.
 
+        :param symbol_data: The data of the symbol.
+        :param coefficients: The coefficients of the symbol.
+        :return: The index of the pivot symbol, or none if no pivot symbol
+        """
+        for index in range(self.symbols):
+            coefficient = self.field.get_value(coefficients, index)
+
+            if coefficient == 0:
+                continue
+
+            if not self.is_symbol_pivot(index):
+                return index
+
+            self.field.vector_multiply_subtract_into(
+                coefficients, self.coefficients(index), coefficient
+            )
+
+            self.field.vector_multiply_subtract_into(
+                symbol_data, self.symbol_data(index), coefficient
+            )
+
+        return None
+
+    def __forward_substitute_from_pivot(
+        self, symbol_data: bytearray, coefficients: bytearray, pivot: int
+    ):
+        """
+        Forward substitute the given symbol from the pivot symbol.
+
+        :param symbol_data: The data of the symbol.
+        :param coefficients: The coefficients of the symbol.
+        :param pivot: The index of the pivot symbol.
+        """
+
+        # Start right after the pivot_index position
+        for index in range(pivot + 1, self.symbols):
+            coefficient = self.field.get_value(coefficients, index)
+
+            if coefficient == 0:
+                continue
+
+            if not self.is_symbol_pivot(index):
+                continue
+
+            self.field.vector_multiply_subtract_into(
+                coefficients, self.coefficients(index), coefficient
+            )
+
+            self.field.vector_multiply_subtract_into(
+                symbol_data, self.symbol_data(index), coefficient
+            )
+
+    def __backward_substitute(
+        self, symbol_data: bytearray, coefficients: bytearray, pivot_index: int
+    ):
+        """
+        Backward substitute the given symbol.
+
+        :param symbol_data: The data of the symbol.
+        :param coefficients: The coefficients of the symbol.
+        :param pivot_index: The index of the pivot symbol.
+        """
+
+        # We found a "1" that nobody else had as pivot, we now
+        # substract this packet from other coded packets
+        # - if they have a "1" at our pivot position
+        for index in range(self.symbols):
+
+            if index == pivot_index:
+                # We cannot backward substitute into our self
+                continue
+
+            if self.is_symbol_decoded(index):
+                # We know that we have no non-zero elements
+                # outside the pivot position.
+                continue
+
+            if self.is_symbol_missing(index):
+                # We do not have a symbol yet here
+                continue
+
+            coefficient = self.field.get_value(self.coefficients(index), pivot_index)
+
+            if coefficient == 0:
+                continue
+
+            # Update symbol and corresponding vector
+            self.field.vector_multiply_subtract_into(
+                self.coefficients(index), coefficients, coefficient
+            )
+            self.field.vector_multiply_subtract_into(
+                self.symbol_data(index), symbol_data, coefficient
+            )
+
+    def __normalize(self, symbol_data: bytearray, coefficients: bytearray, index: int):
+        """
+        Normalize the given symbol.
+
+        :param symbol_data: The data of the symbol.
+        :param coefficients: The coefficients of the symbol.
         :param index: The index of the symbol.
-        :return: True if the symbol is a pivot symbol.
         """
-        return self.symbol_status[index] != Decoder.SymbolStatus.MISSING
+        coefficient = self.field.get_value(coefficients, index)
 
-    def is_symbol_decoded(self, index: int) -> bool:
+        inverted_coefficient = self.field.invert(coefficient)
+
+        self.field.vector_multiply_into(
+            coefficients,
+            inverted_coefficient,
+        )
+
+        self.field.vector_multiply_into(symbol_data, inverted_coefficient)
+
+    def __swap_decode(self, symbol_data: bytearray, index: int):
         """
-        Check if a symbol is decoded.
+        Swap the given symbol with an existing coded symbol.
 
+        :param symbol_data: The data of the symbol.
         :param index: The index of the symbol.
-        :return: True if the symbol is decoded.
         """
-        return self.symbol_status[index] == Decoder.SymbolStatus.DECODED
+        raise NotImplementedError()

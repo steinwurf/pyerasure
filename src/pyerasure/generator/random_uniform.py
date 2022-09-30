@@ -53,12 +53,16 @@ class RandomUniform:
         """
         Generate the coefficients.
         """
-        coefficients = self.random.randbytes(self.field.elements_to_bytes(rank))
+        bytes_to_generate = self.field.elements_to_bytes(rank)
+        coefficients = bytearray(
+            random.getrandbits(8) for _ in range(bytes_to_generate)
+        )
 
         overshoot = rank % 8
         # clear overshoot bits
         if overshoot != 0:
             coefficients[-1] &= (1 << overshoot) - 1
+        return bytes(coefficients)
 
     def generate_recode(self, decoder: pyerasure.Decoder) -> bytes:
         """

@@ -13,11 +13,15 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+import pyerasure.finite_field
+
 
 class Encoder:
     """The encoder class is used to encode a set of symbols."""
 
-    def __init__(self, field, symbols: int, symbol_bytes: int):
+    def __init__(
+        self, field: pyerasure.finite_field.Binary, symbols: int, symbol_bytes: int
+    ):
         """
         The encoder constructor.
 
@@ -49,7 +53,7 @@ class Encoder:
     @property
     def block_bytes(self) -> int:
         """The size of the block in bytes."""
-        return self._symbols * self._symbol_bytes
+        return self.symbols * self.symbol_bytes
 
     @property
     def rank(self) -> int:
@@ -63,11 +67,11 @@ class Encoder:
         :param index: The index of the symbol.
         :param symbol_data: The data of the symbol.
         """
-        if len(symbol_data) != self._symbol_bytes:
+        if len(symbol_data) != self.symbol_bytes:
             raise ValueError(f"Invalid symbol size {len(symbol_data)}.")
-        if index >= self._symbols:
+        if index >= self.symbols:
             raise ValueError(f"Invalid symbol index. {index}")
-        if index != self._rank:
+        if index != self.rank:
             raise ValueError("Symbols must be set in order.")
         self._symbols_data[index] = symbol_data
         self._rank += 1
@@ -80,12 +84,11 @@ class Encoder:
         """
         if len(block_data) != self.block_bytes:
             raise ValueError(f"Invalid block size {block_data}.")
-        for index in range(self._symbols):
+        for index in range(self.symbols):
+            offset = index * self.symbol_bytes
             self.set_symbol(
                 index,
-                block_data[
-                    index * self._symbol_bytes : (index + 1) * self._symbol_bytes
-                ],
+                block_data[offset : offset + self.symbol_bytes],
             )
 
     def is_symbol_set(self, index: int) -> bool:
@@ -95,9 +98,9 @@ class Encoder:
         :param index: The index of the symbol.
         :return: True if the symbol set.
         """
-        if index >= self._symbols:
+        if index >= self.symbols:
             raise ValueError("Invalid symbol index.")
-        return self._symbols[index] is not None
+        return self._symbols_data[index] is not None
 
     def symbol_data(self, index: int) -> bytes:
         """
@@ -106,7 +109,7 @@ class Encoder:
         :param index: The index of the symbol.
         :return: The data of the symbol.
         """
-        if index >= self._symbols:
+        if index >= self.symbols:
             raise ValueError("Invalid symbol index.")
         return self._symbols_data[index]
 
@@ -118,16 +121,16 @@ class Encoder:
                              encoding.
         :return: The encoded symbol.
         """
-        encoded_symbol = bytearray(self._symbol_bytes)
-        for index in range(self._rank):
-            coefficient = self._field.get_value(coefficients, index)
+        encoded_symbol = bytearray(self.symbol_bytes)
+        for index in range(self.rank):
+            coefficient = self.field.get_value(coefficients, index)
             if coefficient == 0:
                 continue
 
             if not self.is_symbol_set(index):
                 raise ValueError(f"Symbol not set: {index}")
 
-            self._field.vector_multiply_add_into(
+            self.field.vector_multiply_add_into(
                 encoded_symbol, self.symbol_data(index), coefficient
             )
 
