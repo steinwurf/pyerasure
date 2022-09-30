@@ -7,7 +7,7 @@ import waflib
 from waflib.Build import BuildContext
 
 
-VERSION = "0.0.0"
+VERSION = "1.0.0"
 
 
 class UploadContext(BuildContext):
@@ -53,13 +53,18 @@ def build(bld):
         waflib.extras.wurf.directory.remove_directory(path=egg_info)
 
 
+class ReleaseContext(BuildContext):
+    cmd = "prepare_release"
+    fun = "prepare_release"
+
+
 def prepare_release(ctx):
     """Prepare a release."""
 
     # Rewrite versions
     with ctx.rewrite_file(filename="src/pyerasure/_version.py") as f:
 
-        pattern = r'__version__ = "d+_\d+_\d+"'
+        pattern = r'__version__ = "\d+\.\d+\.\d+"'
         replacement = '__version__ = "{}"'.format(VERSION)
 
         f.regex_replace(pattern=pattern, replacement=replacement)
