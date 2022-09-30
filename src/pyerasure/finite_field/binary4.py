@@ -13,34 +13,42 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from . import FullTable
 
-class Binary:
-    """The binary finite field class."""
+
+class Binary4:
+    """The binary4 finite field class."""
 
     """The maximum value of the finite field."""
-    max_value: int = 0x01
+    max_value: int = 0x0F
+
+    def __init__(self, prime: int = 19):
+        """The binary4 finite field constructor."""
+        self._prime = prime
+        self._table = FullTable(self._prime)
+        assert self._table.degree == 4
 
     @classmethod
     def is_binary(cls) -> bool:
         """Check if the field is binary."""
-        return True
+        return False
 
     @classmethod
     def elements_to_bytes(cls, elements: int) -> int:
         """Convert the number of elements to the number of bytes."""
-        return (elements + 7) // 8
+        return elements // 2 + elements % 2
 
     @classmethod
     def bytes_to_elements(cls, bytes: int) -> int:
         """Convert the number of bytes to the number of elements."""
-        return bytes * 8
+        return bytes * 2
 
     @classmethod
     def get_value(cls, elements: bytearray, index: int) -> int:
         """Return the value of the element at the given index."""
         if index >= cls.bytes_to_elements(len(elements)):
             raise ValueError("index out of range")
-        return (elements[index // 8] >> (index % 8)) & 0x1
+        return elements[index // 2] >> (4 * (index % 2)) & 0xF
 
     @classmethod
     def set_value(cls, elements: bytearray, index: int, value: int):
@@ -48,29 +56,37 @@ class Binary:
         if index >= cls.bytes_to_elements(len(elements)):
             raise ValueError("index out of range")
         if value < 0 or value > cls.max_value:
-            raise ValueError("value must be 0 or 1")
-        if value == 0:
-            elements[index // 8] &= ~(1 << (index % 8))
-        else:
-            elements[index // 8] |= 1 << (index % 8)
+            raise ValueError("value must be between 0 and 15")
+        elements[index // 2] ^= (value & 0xF) << (4 * (index % 2))
 
-    @classmethod
-    def vector_multiply_add_into(cls, x: bytearray, y: bytes, c: int):
+    def invert(self, x: int) -> int:
+        """Invert the given element."""
+        return self._table.divide(1, x)
+
+    def vector_multiply_add_into(self, x: bytearray, y: bytes, c: int):
         """Multiply the vector x with the vector y and add the result to c."""
+
         assert len(x) == len(y)
-        assert c <= cls.max_value
-
-        if c == 0:
-            return
-
-        if c != 1:
-            raise ValueError("c must be 0 or 1")
+        assert c <= self.max_value
 
         for i in range(len(x)):
-            x[i] ^= y[i]
+            x1 = x[i] >> 4
+            x1 ^= self._table.multiply(y[i] >> 4, c)
+            x2 = x[i] & 0xF
+            x2 ^= self._table.multiply(y[i] & 0xF, c)
+            x[i] = (x1 << 4) | x2
 
-    @classmethod
-    def vector_multiply_subtract_into(cls, x: bytearray, y: bytes, c: int):
+    def vector_multiply_subtract_into(self, x: bytearray, y: bytes, c: int):
         """Multiply the vector x with the vector y and subtract the result from c."""
-        assert c <= cls.max_value
-        cls.vector_multiply_add_into(x, y, c)
+        self.vector_multiply_add_into(x, y, c)
+
+    def vector_multiply_into(self, x: bytearray, c: int):
+        """Multiply the vector x with the vector y."""
+
+        assert c <= self.max_value
+        for i in range(len(x)):
+            x1 = x[i] >> 4
+            x1 = self._table.multiply(x1, c)
+            x2 = x[i] & 0xF
+            x2 = self._table.multiply(x2, c)
+            x[i] = (x1 << 4) | x2

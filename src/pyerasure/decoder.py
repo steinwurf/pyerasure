@@ -13,7 +13,7 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-from typing import Tuple
+from typing import Tuple, Union
 from enum import Enum
 
 from pyerasure import finite_field
@@ -27,7 +27,12 @@ class Decoder:
         PARTIALLY_DECODED = 1
         DECODED = 2
 
-    def __init__(self, field: finite_field.Binary, symbols: int, symbol_bytes: int):
+    def __init__(
+        self,
+        field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
+        symbols: int,
+        symbol_bytes: int,
+    ):
         """
         The decoder constructor.
 
@@ -54,7 +59,9 @@ class Decoder:
         return self._symbol_bytes
 
     @property
-    def field(self):
+    def field(
+        self,
+    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
         """The chosen finite field."""
         return self._field
 
@@ -120,12 +127,13 @@ class Decoder:
 
         :return: The data of the block.
         """
-        if not self.is_complete():
-            raise ValueError("The block is not complete")
 
         block_data = bytearray()
         for i in range(self.symbols):
-            block_data.extend(self.symbol_data(i))
+            symbol_data = self.symbol_data(i)
+            if symbol_data is None:
+                symbol_data = bytearray(self.symbol_bytes)
+            block_data.extend(symbol_data)
         return block_data
 
     def coefficients(self, index: int) -> bytearray:

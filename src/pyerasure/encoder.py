@@ -13,14 +13,18 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-import pyerasure.finite_field
+from typing import Union
+from pyerasure import finite_field
 
 
 class Encoder:
     """The encoder class is used to encode a set of symbols."""
 
     def __init__(
-        self, field: pyerasure.finite_field.Binary, symbols: int, symbol_bytes: int
+        self,
+        field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
+        symbols: int,
+        symbol_bytes: int,
     ):
         """
         The encoder constructor.
@@ -46,7 +50,9 @@ class Encoder:
         return self._symbol_bytes
 
     @property
-    def field(self):
+    def field(
+        self,
+    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
         """The chosen finite field."""
         return self._field
 

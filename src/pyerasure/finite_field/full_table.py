@@ -17,12 +17,12 @@ from . import online
 
 
 class FullTable:
-    def __init__(self, polynomial):
+    def __init__(self, polynomial: int):
         """
         Precomputes and creates two lookup table for multiplying
         and dividing elements in a given 2ᴹ binary extension field.
 
-        polynomial, the irreducible polynomial used
+        :param polynomial: The irreducible polynomial defining the field.
         """
 
         self.polynomial = polynomial
@@ -46,28 +46,32 @@ class FullTable:
 
                 self.division_table[offset + j] = online.divide(i, j, polynomial)
 
-    def multiply(self, a, b):
+    def multiply(self, a: int, b: int) -> int:
         """
         Multiplies two binary extension field elements using the
         pre-compute lookup table.
         For each element there are 2ᴹ results, this is used to
         index into the table
 
-        a, the first polynomial
-        b, the second polynomial
+        :param a: The first element to multiply.
+        :param b: The second element to multiply.
+        :return: The result of the multiplication.
         """
+
         return self.multiply_table[(a << self.degree) + b]
 
-    def divide(self, a, b):
+    def divide(self, a: int, b: int) -> int:
         """
         Divides two binary extension field elements using the
         pre-compute lookup table.
         For each element there are 2ᴹ results, this is used to
         index into the table
 
-        a, the first polynomial
-        b, the second polynomial
+        :param a: The first element to divide.
+        :param b: The second element to divide.
+        :return: The result of the division.
         """
+
         return self.division_table[(a << self.degree) + b]
 
     def print(self):

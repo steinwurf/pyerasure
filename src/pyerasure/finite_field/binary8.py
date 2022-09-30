@@ -19,9 +19,14 @@ from . import FullTable
 class Binary8:
     """The binary8 finite field class."""
 
-    def __init__(self, prime=285):
+    """The maximum value of the finite field."""
+    max_value: int = 0xFF
+
+    def __init__(self, prime: int = 285):
+        """The binary8 finite field constructor."""
         self._prime = prime
         self._table = FullTable(self._prime)
+        assert self._table.degree == 8
 
     @classmethod
     def is_binary(cls) -> bool:
@@ -50,7 +55,7 @@ class Binary8:
         """Set the value of the element at the given index."""
         if index >= cls.bytes_to_elements(len(elements)):
             raise ValueError("index out of range")
-        if value < 0 or value > 255:
+        if value < 0 or value > cls.max_value:
             raise ValueError("value must be between 0 and 255")
         elements[index] = value
 
@@ -60,6 +65,8 @@ class Binary8:
 
     def vector_multiply_add_into(self, x: bytearray, y: bytes, c: int):
         """Multiply the vector x with the vector y and add the result to c."""
+        assert len(x) == len(y)
+        assert c <= self.max_value
 
         for i in range(len(x)):
             x[i] ^= self._table.multiply(y[i], c)
@@ -70,5 +77,6 @@ class Binary8:
 
     def vector_multiply_into(self, x: bytearray, c: int):
         """Multiply the vector x with the vector y."""
+        assert c <= self.max_value
         for i in range(len(x)):
             x[i] = self._table.multiply(x[i], c)

@@ -29,6 +29,7 @@ class TestBlockEncodeDecode(unittest.TestCase):
     def test_encode_decode_simple_random_uniform(self):
         random_uniform_fields = [
             pyerasure.finite_field.Binary(),
+            pyerasure.finite_field.Binary4(),
             pyerasure.finite_field.Binary8(),
         ]
 

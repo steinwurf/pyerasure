@@ -13,8 +13,10 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from typing import Union
 import pyerasure
 import random
+from .. import finite_field
 
 
 class RandomUniform:
@@ -22,7 +24,11 @@ class RandomUniform:
     Uniform random block generator.
     """
 
-    def __init__(self, field, symbols) -> None:
+    def __init__(
+        self,
+        field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
+        symbols,
+    ) -> None:
         """
         The random uniform block generator constructor.
 
@@ -39,7 +45,9 @@ class RandomUniform:
         return self._symbols
 
     @property
-    def field(self):
+    def field(
+        self,
+    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
         """The chosen finite field."""
         return self._field
 
@@ -55,7 +63,7 @@ class RandomUniform:
         """
         bytes_to_generate = self.field.elements_to_bytes(rank)
         coefficients = bytearray(
-            random.getrandbits(8) for _ in range(bytes_to_generate)
+            self.random.getrandbits(8) for _ in range(bytes_to_generate)
         )
 
         overshoot = rank % 8
