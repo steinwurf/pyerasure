@@ -53,6 +53,18 @@ def build(bld):
         waflib.extras.wurf.directory.remove_directory(path=egg_info)
 
 
+def prepare_release(ctx):
+    """Prepare a release."""
+
+    # Rewrite versions
+    with ctx.rewrite_file(filename="src/pyerasure/_version.py") as f:
+
+        pattern = r'__version__ = "d+_\d+_\d+"'
+        replacement = '__version__ = "{}"'.format(VERSION)
+
+        f.regex_replace(pattern=pattern, replacement=replacement)
+
+
 def _find_wheel(ctx):
     """Find the .whl file in the dist folder."""
 
