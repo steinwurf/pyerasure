@@ -108,7 +108,14 @@ class Decoder:
         :param index: The index of the symbol.
         :return: True if the symbol is decoded.
         """
-        return self._symbol_status[index] == Decoder.SymbolStatus.DECODED
+        if self._symbol_status[index] != Decoder.SymbolStatus.DECODED:
+            # Check coefficients
+            if self.__is_coefficients_decoded(index):
+                self._symbol_status[index] = Decoder.SymbolStatus.DECODED
+                return True
+            return False
+        else:
+            return True
 
     def symbol_data(self, index: int) -> bytearray:
         """
@@ -201,15 +208,36 @@ class Decoder:
         self.field.set_value(self.coefficients(index), index, 1)
         self._symbol_status[index] = Decoder.SymbolStatus.DECODED
 
-    def recode_symbol(self, coefficients: bytes) -> Tuple[bytes, bytearray]:
+    def recode_symbol(self, coefficients_in: bytes) -> Tuple[bytes, bytearray]:
         """
         Recodes a new symbol based on given the coefficients and current state
         of the decoder.
 
-        :param coefficients: These are the coding coefficients.
+        :param coefficients_in: These are the coding coefficients.
         :return: The recoded symbol and resulting coefficients.
         """
-        raise NotImplementedError()
+
+        symbol_data = bytearray(self.symbol_bytes)
+        coefficients = bytearray(self.field.elements_to_bytes(self.symbols))
+
+        for index in range(self.symbols):
+
+            value = self.field.get_value(coefficients_in, index)
+
+            if value == 0:
+                continue
+
+            assert self.is_symbol_pivot(index)
+
+            self.field.vector_multiply_add_into(
+                coefficients, self.coefficients(index), value
+            )
+            self.field.vector_multiply_add_into(
+                symbol_data,
+                self.symbol_data(index),
+                value,
+            )
+        return symbol_data, coefficients
 
     def __forward_substitute_to_pivot(
         self, symbol_data: bytearray, coefficients: bytearray
@@ -352,3 +380,23 @@ class Decoder:
         # contain a larger pivot id than the current (unless it is reduced
         # to all zeroes).
         self.decode_symbol(symbol_i, coefficients_i)
+
+    def __is_coefficients_decoded(self, index: int):
+        """
+        Check if the coefficients at the given index are decoded.
+
+        :param index: The index of the coefficients.
+        :return: True if the coefficients are decoded, False otherwise.
+        """
+        coefficients = self.coefficients(index)
+        if coefficients is None:
+            return False
+
+        for i in range(self.symbols):
+            if i == index:
+                continue
+
+            if self.field.get_value(coefficients, i) != 0:
+                return False
+
+        return True
