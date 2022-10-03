@@ -88,6 +88,11 @@ html_theme_options = {
     "target_highlight_color": "002255",
     "highlighted_color": "00B5F4",
     "search_form_focus_color": "00B5F4",
+    "forkme_ribbon_color": "00B5F4",
+    "forkme_repository": {
+        "provider": "GitHub",
+        "url": "https://github.com/steinwurf/pyerasure",
+    },
 }
 
 # The name of an image file (relative to this directory) to place at the top

@@ -5,6 +5,9 @@
         "pip install . && cd docs && sphinx-build -b html -W -D version=${release} . ${build_path}/${release}"
       ],
       "requirements": "${source_path}/docs/requirements.txt",
+      "tags.semver.filters": [
+        ">0.0.0"
+      ],
       "workingtree": true,
       "variables": {
         "tag:release": "${name}",
