@@ -6,6 +6,10 @@ every change, see the Git log.
 
 Latest
 ------
+* tbd
+
+1.3.0
+-----
 * Minor: Added RSCauchy generator.
 
 1.2.0
