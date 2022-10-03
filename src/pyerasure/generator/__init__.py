@@ -15,3 +15,4 @@
 
 
 from .random_uniform import RandomUniform
+from .rs_cauchy import RSCauchy
