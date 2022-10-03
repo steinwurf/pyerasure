@@ -15,9 +15,10 @@
 
 
 def polynomial_to_string(a):
-    """Print the polynomial representation of a finite field value
+    """
+    Print the polynomial representation of a finite field value.
 
-    a, the polynomial to print
+    :param a: the polynomial to print.
     """
     degree = find_degree(a)
     polynomial = ""
@@ -38,10 +39,12 @@ def polynomial_to_string(a):
 
 def find_degree(a):
     """
-    Finds returns the degree of the polynomial
-    i.e. the number 5 = 101 = X^2 + 1 has degree 2
+    Finds returns the degree of the polynomial,
+    i.e., the number 5 = 101 = X² + 1 has degree 2.
 
-    a, the polynomial whos degree we wish to find
+    :param a: the polynomial whos degree we wish to find.
+
+    :return: the degree of the polynomial.
     """
     degree = 0
 
@@ -59,9 +62,11 @@ def multiply(a, b, p):
     Performs the simple online multiply algorithm in the
     2^m extension field
 
-    a, the first polynomial
-    b, the second polynomial
-    p, the irreducible polynomial
+    :param a: the first polynomial
+    :param b: the second polynomial
+    :param p: the irreducible polynomial
+
+    :return: the reulting polynomial
     """
 
     if a == 0 or b == 0:
@@ -100,8 +105,10 @@ def inverse(a, p):
     Finds the inverse of a polynomial a(x) in
     the 2^m extension field
 
-    a, the polynomial whos inverse we want
-    p, the irreducible polynomial
+    :param a: the polynomial whos inverse we want
+    :param p: the irreducible polynomial
+
+    :return: the inverse of a
     """
     if a == 1:
         return 1
@@ -135,10 +142,12 @@ def divide(a, b, p):
     Divides the two input polynomials and find the resulting
     polynomial in the 2^m extension field
 
-    a, the numerator polynomial
-    b, the denominator polynomial
-    p, the prime polynomial
-    m, the degree of the prime polynomial
+    :param a: the numerator polynomial
+    :param b: the denominator polynomial
+    :param p: the prime polynomial
+    :param m: the degree of the prime polynomial
+
+    :return: the resulting polynomial
     """
     value = inverse(b, p)
     return multiply(value, a, p)
