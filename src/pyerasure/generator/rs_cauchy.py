@@ -23,10 +23,8 @@ class RSCauchy:
     """
 
     def __init__(
-        self,
-        field: Union[finite_field.Binary4, finite_field.Binary8],
-        symbols,
-    ) -> None:
+        self, field: Union[finite_field.Binary4, finite_field.Binary8], symbols
+    ):
         """
         The Reed-Solomon-Cauchy generator constructor.
 
@@ -55,9 +53,7 @@ class RSCauchy:
         return self._symbols
 
     @property
-    def field(
-        self,
-    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
+    def field(self) -> Union[finite_field.Binary4, finite_field.Binary8]:
         """The chosen finite field."""
         return self._field
 

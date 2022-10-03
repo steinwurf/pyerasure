@@ -28,7 +28,7 @@ class RandomUniform:
         self,
         field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
         symbols,
-    ) -> None:
+    ):
         """
         The random uniform block generator constructor.
 
