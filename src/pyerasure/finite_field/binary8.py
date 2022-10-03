@@ -60,6 +60,13 @@ class Binary8:
             raise ValueError("value must be between 0 and 255")
         elements[index] = value
 
+    @classmethod
+    def add(cls, lhs: int, rhs: int) -> int:
+        """Add two elements."""
+        if lhs < 0 or lhs > cls.max_value:
+            raise ValueError("lhs must be between 0 and 255")
+        return lhs ^ rhs
+
     def invert(self, x: int) -> int:
         """Invert the given element."""
         return self._table.divide(1, x)
