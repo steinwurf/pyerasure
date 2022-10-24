@@ -1,4 +1,4 @@
-News for pyerasure
+News for PyErasure
 ==================
 
 This file lists the major changes between versions. For a more detailed list of
@@ -6,7 +6,8 @@ every change, see the Git log.
 
 Latest
 ------
-* tbd
+* Major: Bye, bye PyPi! Hello, hello git and SSH! PyErasure should now be
+  installed using git and SSH. See the README for more details.
 
 1.3.0
 -----
@@ -16,7 +17,7 @@ Latest
 -----
 * Patch: Fix issue with `Binary4`.
 * Minor: Added support for swap decode.
-* Minor: Added support for recoding and added example.
+* Minor: Added support for recoding and added an example.
 
 1.1.0
 -----

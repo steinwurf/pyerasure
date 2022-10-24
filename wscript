@@ -10,11 +10,6 @@ from waflib.Build import BuildContext
 VERSION = "1.3.0"
 
 
-class UploadContext(BuildContext):
-    cmd = "upload"
-    fun = "upload"
-
-
 def options(opt):
 
     opt.add_option(
@@ -81,17 +76,6 @@ def _find_wheel(ctx):
         wheel = wheel[0]
         waflib.Logs.info("Wheel %s", wheel)
         return wheel
-
-
-def upload(bld):
-    """Upload the built wheel to PyPI (the Python Package Index)"""
-
-    with bld.create_virtualenv() as venv:
-        venv.run("python -m pip install twine")
-
-        wheel = _find_wheel(ctx=bld)
-
-        venv.run(f"python -m twine upload {wheel}")
 
 
 def _pytest(bld, venv):

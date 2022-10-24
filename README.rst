@@ -5,10 +5,7 @@
 Introduction
 ============
 
-|PyPi| |Waf Python Tests| |Black| |Flake8| |Pip Install|
-
-.. |PyPi| image:: https://badge.fury.io/py/pyerasure.svg
-    :target: https://badge.fury.io/py/pyerasure
+|Waf Python Tests| |Black| |Flake8| |Pip Install|
 
 .. |Waf Python Tests| image:: https://github.com/steinwurf/pyerasure/actions/workflows/waf.yml/badge.svg
    :target: https://github.com/steinwurf/pyerasure/actions/workflows/waf.yml
@@ -29,6 +26,17 @@ What it is:
 Installation
 ------------
 
-1. Install the ``pyerasure`` tool using ``pip``::
+1. Obtain a Steinwurf ApS research license (see https://www.steinwurf.com/license/)
+2. Setup your Github SSH key (see https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh)
+3. Install the ``pyerasure`` tool using ``pip`` and ``git/ssh``::
 
-      python -m pip install pyerasure
+      python3 -m pip install git+ssh://git@github.com/steinwurf/pyerasure@[TAG]
+
+   .. note::
+
+      The ``[TAG]`` should be replaced with the desired version or checksum
+      of the tool.
+
+4. Run the ``pyerasure`` hello world example::
+
+      python3 examples/hello_world.py

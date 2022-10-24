@@ -2,10 +2,19 @@ Quick Start
 ===========
 
 PyErasure is a pure python implementation of the erasure coding.
-This means it's installation is very easy.
-Just install the package with pip::
+This means its installation is very easy.
 
-    python3 -m pip install pyerasure
+1. Obtain a Steinwurf ApS research license (see https://www.steinwurf.com/license/)
+2. Setup your Github SSH key (see https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh)
+3. Install the ``pyerasure`` tool using ``pip`` and ``git/ssh``::
+
+      python3 -m pip install git+ssh://git@github.com/steinwurf/pyerasure@[TAG]
+
+   .. note::
+
+      The ``[TAG]`` should be replaced with the desired version or checksum
+      of the tool.
+
 
 Then you can use it in your python code::
 
