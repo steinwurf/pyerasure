@@ -20,7 +20,7 @@ from pyerasure import finite_field
 
 
 class Decoder:
-    """The decoder class is used to decode a set of encoded symbols."""
+    """The block decoder class is used to decode a set of encoded symbols."""
 
     class SymbolStatus(Enum):
         MISSING = 0
@@ -34,10 +34,10 @@ class Decoder:
         symbol_bytes: int,
     ):
         """
-        The decoder constructor.
+        The block decoder constructor.
 
         :param field: the chosen finite field.
-        :param symbols: The number of symbols.
+        :param symbols: The number of symbols in the block.
         :param symbol_bytes: The size of a symbol in bytes.
         """
         self._field = field
@@ -90,6 +90,8 @@ class Decoder:
         :param index: The index of the symbol.
         :return: True if the symbol is missing.
         """
+        if index >= self.symbols:
+            raise ValueError(f"Invalid symbol index {index}")
         return self._symbol_status[index] == Decoder.SymbolStatus.MISSING
 
     def is_symbol_pivot(self, index: int) -> bool:
@@ -99,6 +101,8 @@ class Decoder:
         :param index: The index of the symbol.
         :return: True if the symbol is a pivot symbol.
         """
+        if index >= self.symbols:
+            raise ValueError(f"Invalid symbol index {index}")
         return self._symbol_status[index] != Decoder.SymbolStatus.MISSING
 
     def is_symbol_decoded(self, index: int) -> bool:
@@ -108,6 +112,9 @@ class Decoder:
         :param index: The index of the symbol.
         :return: True if the symbol is decoded.
         """
+        if index >= self.symbols:
+            raise ValueError(f"Invalid symbol index {index}")
+
         if self._symbol_status[index] != Decoder.SymbolStatus.DECODED:
             # Check coefficients
             if self.__is_coefficients_decoded(index):

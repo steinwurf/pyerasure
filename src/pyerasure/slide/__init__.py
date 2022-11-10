@@ -13,10 +13,7 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-import pyerasure.finite_field
 
-
-def test_run():
-
-    table = pyerasure.finite_field.FullTable(polynomial=37)
-    table.print()
+from .encoder import Encoder
+from .decoder import Decoder
+from ..range import Range

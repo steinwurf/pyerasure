@@ -16,9 +16,9 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-import pyerasure
 import pyerasure.finite_field
-import pyerasure.generator
+import pyerasure.block
+import pyerasure.block.generator
 
 import math
 import os
@@ -98,11 +98,11 @@ def main():
 
     field = pyerasure.finite_field.Binary8()
 
-    encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
+    encoder = pyerasure.block.Encoder(field, symbols, symbol_bytes)
 
-    decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
+    decoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
 
-    generator = pyerasure.generator.RandomUniform(field, encoder.symbols)
+    generator = pyerasure.block.generator.RandomUniform(field, encoder.symbols)
 
     # Create a bytearray from the image to use in the encoding (only pick the
     # data we have room for).

@@ -20,9 +20,9 @@ import os
 import sys
 import random
 
-import pyerasure
+import pyerasure.block
+import pyerasure.block.generator
 import pyerasure.finite_field
-import pyerasure.generator
 
 
 def main():
@@ -56,12 +56,12 @@ def main():
     symbol_bytes = 160
 
     # Create an encoder and two decoders
-    encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
-    recoder = pyerasure.Decoder(field, symbols, symbol_bytes)
-    decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
+    encoder = pyerasure.block.Encoder(field, symbols, symbol_bytes)
+    recoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
+    decoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
 
     # Create generator
-    generator = pyerasure.generator.RandomUniform(field, symbols)
+    generator = pyerasure.block.generator.RandomUniform(field, symbols)
 
     # Generate some random data to encode. We create a bytearray of the same
     # size as the encoder's block size and assign it to the encoder.

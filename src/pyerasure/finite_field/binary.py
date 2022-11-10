@@ -13,12 +13,20 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from typing import Final
+
 
 class Binary:
     """The binary finite field class."""
 
     """The maximum value of the finite field."""
-    max_value: int = 0x01
+    max_value: Final[int] = 0x01
+
+    """The number of elements per byte."""
+    elements_per_byte: Final[int] = 8
+
+    """The number of bits per element."""
+    bits_per_element: Final[int] = 1
 
     @classmethod
     def is_binary(cls) -> bool:
@@ -28,19 +36,22 @@ class Binary:
     @classmethod
     def elements_to_bytes(cls, elements: int) -> int:
         """Convert the number of elements to the number of bytes."""
-        return (elements + 7) // 8
+        return (elements + (Binary.elements_per_byte - 1)) // Binary.elements_per_byte
 
     @classmethod
     def bytes_to_elements(cls, bytes: int) -> int:
         """Convert the number of bytes to the number of elements."""
-        return bytes * 8
+        return bytes * Binary.elements_per_byte
 
     @classmethod
-    def get_value(cls, elements: bytearray, index: int) -> int:
+    def get_value(cls, elements: bytes, index: int) -> int:
         """Return the value of the element at the given index."""
         if index >= cls.bytes_to_elements(len(elements)):
             raise ValueError("index out of range")
-        return (elements[index // 8] >> (index % 8)) & 0x1
+        return (
+            elements[index // Binary.elements_per_byte]
+            >> (index % Binary.elements_per_byte)
+        ) & 0x1
 
     @classmethod
     def set_value(cls, elements: bytearray, index: int, value: int):
@@ -50,9 +61,13 @@ class Binary:
         if value < 0 or value > cls.max_value:
             raise ValueError("value must be 0 or 1")
         if value == 0:
-            elements[index // 8] &= ~(1 << (index % 8))
+            elements[index // Binary.elements_per_byte] &= ~(
+                1 << (index % Binary.elements_per_byte)
+            )
         else:
-            elements[index // 8] |= 1 << (index % 8)
+            elements[index // Binary.elements_per_byte] |= 1 << (
+                index % Binary.elements_per_byte
+            )
 
     @classmethod
     def add(cls, lhs: int, rhs: int) -> int:
@@ -71,11 +86,10 @@ class Binary:
         return lhs
 
     @classmethod
-    def vector_add_into(cls, x: bytearray, y: bytearray):
+    def vector_add_into(cls, x: bytearray, y: bytes):
         """Add y into x."""
-        if len(x) != len(y):
-            raise ValueError("x and y must have the same length")
-        for i in range(len(x)):
+        min_len = min(len(x), len(y))
+        for i in range(min_len):
             x[i] ^= y[i]
 
     @classmethod
@@ -84,20 +98,36 @@ class Binary:
         Multiply the vector y with the constant c and then add the result
         to vector x.
         """
-        assert len(x) == len(y)
-        assert c <= cls.max_value
+
+        if c > cls.max_value:
+            raise ValueError(f"c must be less than {cls.max_value}")
 
         if c == 0:
             return
 
-        if c != 1:
-            raise ValueError("c must be 0 or 1")
+        min_len = min(len(x), len(y))
+        for i in range(min_len):
+            x[i] ^= y[i]
+
+    @classmethod
+    def vector_multiply_into(cls, x: bytearray, c: int):
+        """Multiply the vector x with the vector y."""
+
+        if c > cls.max_value:
+            raise ValueError(f"c must be less than {cls.max_value}")
+
+        if c == 1:
+            return
 
         for i in range(len(x)):
-            x[i] ^= y[i]
+            x[i] = 0
+
+    @classmethod
+    def vector_subtract_into(cls, x: bytearray, y: bytes):
+        """Substract y into x."""
+        cls.vector_add_into(x, y)
 
     @classmethod
     def vector_multiply_subtract_into(cls, x: bytearray, y: bytes, c: int):
         """Multiply the vector x with the vector y and subtract the result from c."""
-        assert c <= cls.max_value
         cls.vector_multiply_add_into(x, y, c)

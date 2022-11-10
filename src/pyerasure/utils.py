@@ -1,0 +1,92 @@
+# License for Commercial Usage
+# Distributed under the "PYERASURE EVALUATION LICENSE 1.3"
+# Licensees holding a valid commercial license may use this project in
+# accordance with the standard license agreement terms provided with the
+# Software (see accompanying file LICENSE.rst or
+# https://www.steinwurf.com/license), unless otherwise different terms and
+# conditions are agreed in writing between Licensee and Steinwurf ApS in which
+# case the license will be regulated by that separate written agreement.
+#
+# License for Non-Commercial Usage
+# Distributed under the "PYERASURE RESEARCH LICENSE 1.2"
+# Licensees holding a valid research license may use this project in accordance
+# with the license agreement terms provided with the Software
+# See accompanying file LICENSE.rst or https://www.steinwurf.com/license
+
+from typing import Union
+from .finite_field import Binary, Binary4, Binary8
+
+from .range import Range
+
+
+def floor(a, b) -> int:
+    """Return the floor of a/b."""
+    return a // b
+
+
+def ceil(a, b) -> int:
+    """Return the ceiling of a/b."""
+    return -(-a // b)
+
+
+def to_symbol_frame(elements_per_byte: int, symbol_range: Range):
+    """Convert a symbol range to a symbol frame.
+
+    :param field: The chosen finite field.
+    :param symbol_range: The symbol range to convert.
+    :return: The symbol frame.
+    """
+    return Range(
+        floor(symbol_range.lower_bound, elements_per_byte) * elements_per_byte,
+        ceil(symbol_range.upper_bound, elements_per_byte) * elements_per_byte,
+    )
+
+
+def coefficients_bytes(elements_per_byte: int, window: Range) -> int:
+    """
+    The number of bytes needed to store the coefficients in the given window.
+
+    :param window: The window.
+    """
+
+    if window.empty():
+        return 0
+
+    symbol_frame = to_symbol_frame(elements_per_byte, window)
+    byte_range = Range(
+        (symbol_frame.lower_bound) // elements_per_byte,
+        (symbol_frame.upper_bound) // elements_per_byte,
+    )
+    return len(byte_range)
+
+
+def relative_index(range: Range, index: int) -> int:
+    """Return the relative index of the given index.
+
+    :param range: The range.
+    :param index: The index.
+    :return: The relative index.
+    """
+    if index not in range:
+        raise ValueError("The index is not in the range.")
+    return index - range.lower_bound
+
+
+def print_coefficients(field: Union[Binary, Binary4, Binary8], coefficients: bytearray):
+    """Print the coefficients of a polynomial.
+
+    :param coefficients: The coefficients of the polynomial.
+    :param field: The finite field.
+    """
+    print("Coefficients:")
+
+    # header
+    print("  ", end="")
+    for i in range(field.bytes_to_elements(len(coefficients))):
+        print(f"{i:3}", end="")
+    print()
+    # values
+    print("  ", end="")
+    for i in range(field.bytes_to_elements(len(coefficients))):
+        print(f"{field.get_value(coefficients, i):3}", end="")
+    print()

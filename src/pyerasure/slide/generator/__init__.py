@@ -13,4 +13,5 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-from ._version import __version__
+
+from .random_uniform import RandomUniform

@@ -14,12 +14,12 @@
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
 from typing import Union, Tuple
-from .. import finite_field
+from pyerasure import finite_field
 
 
 class RSCauchy:
     """
-    A Reed-Solomon-Cauchy generator
+    A Reed-Solomon-Cauchy coefficients generator
     """
 
     def __init__(

@@ -13,6 +13,8 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from typing import Final
+
 from . import FullTable
 from . import Binary
 
@@ -21,7 +23,13 @@ class Binary8:
     """The binary8 finite field class."""
 
     """The maximum value of the finite field."""
-    max_value: int = 0xFF
+    max_value: Final[int] = 0xFF
+
+    """The number of elements per byte."""
+    elements_per_byte: Final[int] = 1
+
+    """The number of bits per element."""
+    bits_per_element: Final[int] = 8
 
     def __init__(self, prime: int = 285):
         """The binary8 finite field constructor."""
@@ -45,7 +53,7 @@ class Binary8:
         return bytes
 
     @classmethod
-    def get_value(cls, elements: bytearray, index: int) -> int:
+    def get_value(cls, elements: bytes, index: int) -> int:
         """Return the value of the element at the given index."""
         if index >= cls.bytes_to_elements(len(elements)):
             raise ValueError("index out of range")
@@ -72,20 +80,27 @@ class Binary8:
         return self._table.divide(1, x)
 
     @classmethod
-    def vector_add_into(cls, x: bytearray, y: bytearray):
+    def vector_add_into(cls, x: bytearray, y: bytes):
         """Add y into x."""
         # Use the binary add function
         Binary.vector_add_into(x, y)
+
+    @classmethod
+    def vector_subtract_into(cls, x: bytearray, y: bytes):
+        """Substract y into x."""
+        cls.vector_add_into(x, y)
 
     def vector_multiply_add_into(self, x: bytearray, y: bytes, c: int):
         """
         Multiply the vector y with the constant c and then add the result
         to vector x.
         """
-        assert len(x) == len(y)
-        assert c <= self.max_value
 
-        for i in range(len(x)):
+        if c > self.max_value:
+            raise ValueError(f"c must be less than {self.max_value}")
+
+        min_len = min(len(x), len(y))
+        for i in range(min_len):
             x[i] ^= self._table.multiply(y[i], c)
 
     def vector_multiply_subtract_into(self, x: bytearray, y: bytes, c: int):
@@ -94,6 +109,17 @@ class Binary8:
 
     def vector_multiply_into(self, x: bytearray, c: int):
         """Multiply the vector x with the vector y."""
-        assert c <= self.max_value
+
+        if c == 0:
+            for i in range(len(x)):
+                x[i] = 0
+            return
+
+        if c == 1:
+            return
+
+        if c > self.max_value:
+            raise ValueError(f"c must be less than {self.max_value}")
+
         for i in range(len(x)):
             x[i] = self._table.multiply(x[i], c)

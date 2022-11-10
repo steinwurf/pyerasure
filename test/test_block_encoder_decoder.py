@@ -20,8 +20,8 @@
 import os
 import random
 import unittest
-import pyerasure
-import pyerasure.generator
+import pyerasure.block
+import pyerasure.block.generator
 import pyerasure.finite_field
 
 
@@ -42,18 +42,18 @@ class TestBlockEncodeDecode(unittest.TestCase):
         symbol_bytes = 300
         symbols = 40
 
-        encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
+        encoder = pyerasure.block.Encoder(field, symbols, symbol_bytes)
         self.assertEqual(field, encoder.field)
 
         self.assertEqual(symbols, encoder.symbols)
         self.assertEqual(symbol_bytes, encoder.symbol_bytes)
 
-        decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
+        decoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
         self.assertEqual(field, decoder.field)
         self.assertEqual(symbols, decoder.symbols)
         self.assertEqual(symbol_bytes, decoder.symbol_bytes)
 
-        generator = pyerasure.generator.RandomUniform(field, encoder.symbols)
+        generator = pyerasure.block.generator.RandomUniform(field, encoder.symbols)
         self.assertEqual(field, generator.field)
         self.assertEqual(symbols, generator.symbols)
         generator.set_seed(0)
@@ -112,9 +112,9 @@ class TestBlockEncodeDecode(unittest.TestCase):
         symbol_bytes = 300
         symbols = 41
 
-        encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
-        decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
-        generator = pyerasure.generator.RandomUniform(field, encoder.symbols)
+        encoder = pyerasure.block.Encoder(field, symbols, symbol_bytes)
+        decoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
+        generator = pyerasure.block.generator.RandomUniform(field, encoder.symbols)
 
         data_in = bytearray(os.urandom(encoder.block_bytes))
         encoder.set_symbols(data_in)
@@ -151,9 +151,9 @@ class TestBlockEncodeDecode(unittest.TestCase):
         symbol_bytes = 30
         symbols = 11
 
-        encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
-        decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
-        generator = pyerasure.generator.RandomUniform(field, encoder.symbols)
+        encoder = pyerasure.block.Encoder(field, symbols, symbol_bytes)
+        decoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
+        generator = pyerasure.block.generator.RandomUniform(field, encoder.symbols)
 
         generator.set_seed(0)
         data_in = bytearray(os.urandom(encoder.block_bytes))

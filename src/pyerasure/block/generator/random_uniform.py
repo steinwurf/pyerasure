@@ -14,14 +14,14 @@
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
 from typing import Union
-import pyerasure
+import pyerasure.block
 import random
-from .. import finite_field
+from pyerasure import finite_field
 
 
 class RandomUniform:
     """
-    Uniform random block generator.
+    Uniform random block coefficients generator.
     """
 
     def __init__(
@@ -66,13 +66,15 @@ class RandomUniform:
             self.random.getrandbits(8) for _ in range(bytes_to_generate)
         )
 
-        overshoot = rank % 8
+        overshoot = rank % self.field.elements_per_byte
+
         # clear overshoot bits
         if overshoot != 0:
-            coefficients[-1] &= (1 << overshoot) - 1
+            coefficients[-1] &= (1 << (overshoot * self.field.bits_per_element)) - 1
+
         return bytes(coefficients)
 
-    def generate_recode(self, decoder: pyerasure.Decoder) -> bytes:
+    def generate_recode(self, decoder: pyerasure.block.Decoder) -> bytes:
         """
         Generate coefficients based on the decoder state.
 

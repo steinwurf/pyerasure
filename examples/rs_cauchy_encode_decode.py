@@ -18,9 +18,9 @@
 import os
 import random
 
-import pyerasure
+import pyerasure.block
+import pyerasure.block.generator
 import pyerasure.finite_field
-import pyerasure.generator
 
 
 def main():
@@ -40,11 +40,11 @@ def main():
 
     # Create an encoder and decoder. The encoder and decoder must be created
     # identically to be compatible.
-    encoder = pyerasure.Encoder(field, symbols, symbol_bytes)
-    decoder = pyerasure.Decoder(field, symbols, symbol_bytes)
+    encoder = pyerasure.block.Encoder(field, symbols, symbol_bytes)
+    decoder = pyerasure.block.Decoder(field, symbols, symbol_bytes)
 
     # The generator must similarly be created based on the encoder/decoder.
-    generator = pyerasure.generator.RSCauchy(field, symbols)
+    generator = pyerasure.block.generator.RSCauchy(field, symbols)
 
     # Allocate some data to encode. In this case we make a buffer
     # with the same size as the encoder's block size (the max.

@@ -18,7 +18,7 @@
 
 
 import unittest
-import pyerasure.generator
+import pyerasure.block.generator
 import pyerasure.finite_field
 
 
@@ -37,7 +37,8 @@ class TestBlockGenerators(unittest.TestCase):
 
         symbols = 40
 
-        generator = pyerasure.generator.RandomUniform(field, symbols)
+        generator = pyerasure.block.generator.RandomUniform(field, symbols)
+        self.assertEqual(field, generator.field)
         self.assertEqual(symbols, generator.symbols)
         generator.set_seed(0)
         coefficients1 = generator.generate()

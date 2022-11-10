@@ -18,7 +18,7 @@ from pyerasure import finite_field
 
 
 class Encoder:
-    """The encoder class is used to encode a set of symbols."""
+    """The block encoder class is used to encode a set of symbols."""
 
     def __init__(
         self,
@@ -27,10 +27,10 @@ class Encoder:
         symbol_bytes: int,
     ):
         """
-        The encoder constructor.
+        The block encoder constructor.
 
         :param field: the chosen finite field.
-        :param symbols: The number of symbols.
+        :param symbols: The number of symbols in the block.
         :param symbol_bytes: The size of a symbol in bytes.
         """
         self._field = field
