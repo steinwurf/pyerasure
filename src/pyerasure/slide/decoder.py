@@ -219,7 +219,7 @@ class Decoder:
             raise ValueError("Empty window")
 
         if window not in self.stream():
-            raise ValueError(f"Invalid window window, self.stream()")
+            raise ValueError(f"Invalid window {window} for stream {self.stream()}")
 
         if len(window) == 1:
             self.decode_systematic_symbol(symbol_data, window.lower_bound)
@@ -287,44 +287,6 @@ class Decoder:
         ) * self.field.elements_per_byte
         return self.field.set_value(coefficients, index - byte_offset, value)
 
-    def __vector_subtract_into(
-        self,
-        coefficients: bytearray,
-        offset: int,
-        coefficients_i: bytearray,
-        offset_i: int,
-    ):
-        """
-        Subtract the coefficients of a symbol into the coefficients of another symbol.
-
-        :param coefficients: The coefficients of the symbol to subtract into.
-        :param offset: The offset of the coefficients of the symbol to subtract into.
-        :param coefficients_i: The coefficients of the symbol to subtract.
-        :param offset_i: The offset of the coefficients of the symbol to subtract.
-        """
-        pass
-
-    def __vector_multiply_subtract_into(
-        self,
-        coefficients: bytearray,
-        offset: int,
-        coefficients_i: bytearray,
-        offset_i: int,
-        coefficient: int,
-    ):
-        """
-        Multiply the coefficients of a symbol by a coefficient and subtract the result
-        into the coefficients of another symbol.
-
-        :param coefficients: The coefficients of the symbol to subtract into.
-        :param offset: The offset of the coefficients of the symbol to subtract into.
-        :param coefficients_i: The coefficients of the symbol to subtract.
-        :param offset_i: The offset of the coefficients of the symbol to subtract.
-        :param coefficient: The coefficient to multiply the coefficients of the symbol
-                            to subtract by.
-        """
-        pass
-
     def __is_coefficients_decoded(self, index: int):
         """
         Check if the coefficients at the given index are decoded.
@@ -388,14 +350,24 @@ class Decoder:
             is_symbol_decoded_i = self.is_symbol_decoded(index)
             offset_i, coefficients_i = self.coefficients(index)
 
+            """
+            0 0 0 0 0 0 0 1 0 0 0 0    offset: 0
+              0 0 0 0 0 0 1 0 0 0 0 0  offset: 1
+                0 0 0 0 0 1 0 0 0      offset: 2
+            0 0 0 0 0 0 0 1 0 0 0 0    offset: 0
+                        0 1 0 0 0 0    offset: 5
+            """
             if coefficient == 1:
-                self.__vector_subtract_into(
-                    coefficients, offset, coefficients_i, offset_i
+                self.field.vector_subtract_into(
+                    memoryview(coefficients)[offset:],
+                    memoryview(coefficients_i)[offset_i:],
                 )
                 self.field.vector_subtract_into(symbol_data, symbol_data_i)
             else:
-                self.__vector_multiply_subtract_into(
-                    coefficients, offset, coefficients_i, offset_i, coefficient
+                self.field.vector_multiply_subtract_into(
+                    memoryview(coefficients)[offset:],
+                    memoryview(coefficients_i)[offset_i:],
+                    coefficient,
                 )
                 self.field.vector_multiply_subtract_into(
                     symbol_data, symbol_data_i, coefficient

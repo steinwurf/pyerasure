@@ -56,7 +56,7 @@ class TestSlideEncodeDecode(unittest.TestCase):
                 encoder.push_symbol(symbol)
 
             symbol = encoder.symbol_data(index)
-            if index not in decoder.stream():
+            while index not in decoder.stream():
                 decoder.push_symbol()
 
             decoder.decode_systematic_symbol(symbol, index)
@@ -92,10 +92,9 @@ class TestSlideEncodeDecode(unittest.TestCase):
         symbols = []
         loss_probability = 10
         for index in range(40):
-            if index not in encoder.stream():
-                encoder.push_symbol(bytearray(os.urandom(encoder.max_symbol_bytes)))
-                if len(encoder.stream()) > 10:
-                    symbols.append(encoder.pop_symbol())
+            encoder.push_symbol(bytearray(os.urandom(encoder.max_symbol_bytes)))
+            if len(encoder.stream()) > 10:
+                symbols.append(encoder.pop_symbol())
             symbol = encoder.symbol_data(index)
 
             if random.randint(0, 100) >= loss_probability:
@@ -112,7 +111,7 @@ class TestSlideEncodeDecode(unittest.TestCase):
                 symbol = encoder.encode_symbol(window, coefficients)
 
                 if random.randint(0, 100) >= loss_probability:
-                    if window not in decoder.stream():
+                    while window not in decoder.stream():
                         decoder.push_symbol()
                     decoder.decode_symbol(symbol, window, coefficients)
                 else:
