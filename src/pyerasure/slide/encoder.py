@@ -103,16 +103,15 @@ class Encoder:
         if window not in self.stream():
             raise ValueError("Window not in stream.")
 
-        # when using a sub byte field we need to offset the coefficients
-        # to the correct position in the byte
-        in_byte_offset = window.lower_bound % self._field.bytes_to_elements(1)
-
+        frame = utils.to_frame(self.field.elements_per_byte, window)
         written = 0
         symbols = []
-        for index in window:
-            relative_index = utils.relative_index(window, index)
+        for index in frame:
+            if index not in window:
+                continue
+
             coefficient = self.field.get_value(
-                coefficients, in_byte_offset + relative_index
+                coefficients, utils.relative_index(window, index)
             )
             if coefficient == 0:
                 continue

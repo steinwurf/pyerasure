@@ -29,16 +29,24 @@ def ceil(a, b) -> int:
     return -(-a // b)
 
 
-def to_symbol_frame(elements_per_byte: int, symbol_range: Range):
-    """Convert a symbol range to a symbol frame.
-
-    :param field: The chosen finite field.
-    :param symbol_range: The symbol range to convert.
-    :return: The symbol frame.
+def to_frame(elements_per_byte: int, range: Range):
     """
+    Convert a range to a frame.
+    A frame, in this context, is the set of indecies covered by the range in
+    sub-byte fields. For example, if the range is [1, 3] and the elements per
+    byte is 2, then the frame is [0, 4].
+
+    :param elements_per_byte: The number of elements per byte.
+    :param symbol_range: The range to convert.
+    :return: The frame.
+    """
+    if range.empty():
+        # If the range is empty, we return the same empty range.
+        return range
+
     return Range(
-        floor(symbol_range.lower_bound, elements_per_byte) * elements_per_byte,
-        ceil(symbol_range.upper_bound, elements_per_byte) * elements_per_byte,
+        floor(range.lower_bound, elements_per_byte) * elements_per_byte,
+        ceil(range.upper_bound, elements_per_byte) * elements_per_byte,
     )
 
 
@@ -49,15 +57,22 @@ def coefficients_bytes(elements_per_byte: int, window: Range) -> int:
     :param window: The window.
     """
 
-    if window.empty():
-        return 0
-
-    symbol_frame = to_symbol_frame(elements_per_byte, window)
+    frame = to_frame(elements_per_byte, window)
     byte_range = Range(
-        (symbol_frame.lower_bound) // elements_per_byte,
-        (symbol_frame.upper_bound) // elements_per_byte,
+        (frame.lower_bound) // elements_per_byte,
+        (frame.upper_bound) // elements_per_byte,
     )
     return len(byte_range)
+
+
+def to_byte_index(elements_per_byte: int, index: int) -> int:
+    """Convert a symbol index to a byte index.
+
+    :param elements_per_byte: The number of elements per byte.
+    :param index: The index.
+    :return: The byte index.
+    """
+    return (index // elements_per_byte) * elements_per_byte
 
 
 def relative_index(range: Range, index: int) -> int:

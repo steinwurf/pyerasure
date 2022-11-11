@@ -48,37 +48,37 @@ class TestSlideEncoder(unittest.TestCase):
         self.assertEqual(max_symbol_bytes, encoder.max_symbol_bytes)
         self.assertEqual(pyerasure.slide.Range(0, 0), encoder.stream())
 
-        encoder.push_symbol(b"XXXXXXX")
-        encoder.push_symbol(b"A")
-        encoder.push_symbol(b"BB")
-        encoder.push_symbol(b"CCC")
-        encoder.push_symbol(b"DDDD")
+        encoder.push_symbol(b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF")
+        encoder.push_symbol(b"\x01\x01")
+        encoder.push_symbol(b"\x00\x00\x02\x02")
+        encoder.push_symbol(b"\x00\x00\x00\x00\x03\x03")
+        encoder.push_symbol(b"\x00\x00\x00\x00\x00\x00\x04\x04")
 
         self.assertEqual(pyerasure.slide.Range(0, 5), encoder.stream())
 
-        self.assertEqual(b"XXXXXXX", encoder.symbol_data(0))
-        self.assertEqual(b"A", encoder.symbol_data(1))
+        self.assertEqual(
+            b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", encoder.symbol_data(0)
+        )
+        self.assertEqual(b"\x01\x01", encoder.symbol_data(1))
         symbol = encoder.pop_symbol()
-        self.assertEqual(b"XXXXXXX", symbol)
+        self.assertEqual(b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", symbol)
         self.assertEqual(pyerasure.slide.Range(1, 5), encoder.stream())
 
-        self.assertEqual(b"A", encoder.symbol_data(1))
+        self.assertEqual(b"\x01\x01", encoder.symbol_data(1))
 
         window = encoder.stream()
-        symbol_frame = pyerasure.utils.to_symbol_frame(
-            encoder.field.elements_per_byte, window
-        )
+        frame = pyerasure.utils.to_frame(encoder.field.elements_per_byte, window)
         coefficients = bytearray(generator.coefficients_bytes(window))
 
-        for i in symbol_frame:
+        for i in frame:
             if i in window:
                 encoder.field.set_value(
-                    coefficients, pyerasure.utils.relative_index(symbol_frame, i), 1
+                    coefficients, pyerasure.utils.relative_index(frame, i), 1
                 )
 
         encoded = encoder.encode_symbol(window, coefficients)
-        self.assertEqual(4, len(encoded))
-        self.assertEqual(bytes([0x04, 0x45, 0x07, 0x44]), encoded)
+        self.assertEqual(8, len(encoded))
+        self.assertEqual(b"\x01\x01\x02\x02\x03\x03\x04\x04", encoded)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ from typing import Union
 import random
 from pyerasure import finite_field
 from ...range import Range
-from ...utils import to_symbol_frame, coefficients_bytes, relative_index
+from ... import utils
 
 
 class RandomUniform:
@@ -59,7 +59,7 @@ class RandomUniform:
 
         :param window: The window.
         """
-        return coefficients_bytes(self.field.elements_per_byte, window)
+        return utils.coefficients_bytes(self.field.elements_per_byte, window)
 
     def generate(self, window: Range) -> bytes:
         """
@@ -74,10 +74,10 @@ class RandomUniform:
             self.random.getrandbits(8) for _ in range(self.coefficients_bytes(window))
         )
 
-        symbol_frame = to_symbol_frame(self.field.elements_per_byte, window)
+        frame = utils.to_frame(self.field.elements_per_byte, window)
 
-        for i in symbol_frame:
+        for i in frame:
             if i not in window:
-                self.field.set_value(coefficients, relative_index(symbol_frame, i), 0)
+                self.field.set_value(coefficients, utils.relative_index(frame, i), 0)
 
         return bytes(coefficients)
