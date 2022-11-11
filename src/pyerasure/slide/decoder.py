@@ -260,7 +260,7 @@ class Decoder:
             return 0
 
         byte_offset = (
-            offset  # self.field.elements_per_byte
+            offset // self.field.elements_per_byte
         ) * self.field.elements_per_byte
         return self.field.get_value(coefficients, index - byte_offset)
 
