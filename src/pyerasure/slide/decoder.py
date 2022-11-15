@@ -302,12 +302,17 @@ class Decoder:
         offset, coefficients = self.coefficients(index)
         assert offset is not None
         assert coefficients is not None
-        elements_count = self.field.bytes_to_elements(len(coefficients))
-        for i in range(offset, offset + elements_count):
-            if i == index:
+        window = Range(offset, offset + self.field.bytes_to_elements(len(coefficients)))
+        frame = utils.to_frame(self.field.elements_per_byte, window)
+
+        for i in frame:
+            if i not in window or i == index:
                 continue
 
-            if self.__get_value(coefficients, offset, i) != 0:
+            if (
+                self.field.get_value(coefficients, utils.relative_index(frame, index))
+                != 0
+            ):
                 return False
 
         return True
@@ -329,9 +334,15 @@ class Decoder:
 
         # Loop over all the symbol/coefficient indicies in the frame
         pivot = None
-        for index in window:
 
-            coefficient = self.__get_value(coefficients, offset, index)
+        frame = utils.to_frame(self.field.elements_per_byte, window)
+        for index in frame:
+            if index not in window:
+                continue
+
+            coefficient = self.field.get_value(
+                coefficients, utils.relative_index(frame, index)
+            )
 
             if coefficient == 0:
                 # If the coefficient is zero we move to the next index
@@ -346,9 +357,8 @@ class Decoder:
 
             # We already have a pivot here get the corresponding symbol and
             # coefficients vector and elimitate those in the incoming symbol
-            symbol_data_i = self.symbol_data(index)
             is_symbol_decoded_i = self.is_symbol_decoded(index)
-            offset_i, coefficients_i = self.coefficients(index)
+            symbol_data_i = self.symbol_data(index)
 
             """
             0 0 0 0 0 0 0 1 0 0 0 0    offset: 0
@@ -357,28 +367,29 @@ class Decoder:
             0 0 0 0 0 0 0 1 0 0 0 0    offset: 0
                         0 1 0 0 0 0    offset: 5
             """
-            if coefficient == 1:
-                self.field.vector_subtract_into(
-                    memoryview(coefficients)[offset:],
-                    memoryview(coefficients_i)[offset_i:],
+            self.field.vector_multiply_subtract_into(
+                symbol_data, symbol_data_i, coefficient
+            )
+
+            if is_symbol_decoded_i:
+                assert len(symbol_data_i) > len(symbol_data)
+
+                coefficient = self.field.set_value(
+                    coefficients, utils.relative_index(frame, index), 0
                 )
-                self.field.vector_subtract_into(symbol_data, symbol_data_i)
             else:
+                offset_i, coefficients_i = self.coefficients(index)
                 self.field.vector_multiply_subtract_into(
                     memoryview(coefficients)[offset:],
                     memoryview(coefficients_i)[offset_i:],
                     coefficient,
                 )
-                self.field.vector_multiply_subtract_into(
-                    symbol_data, symbol_data_i, coefficient
-                )
 
-            # If the stored symbol is larger than the one we're
-            # processing - adjust the size of the incoming symbol
-            if len(symbol_data_i) > len(symbol_data):
-                assert not is_symbol_decoded_i
-                extra = symbol_data_i[len(symbol_data) :]
-                self.field.vector_multiply_into(extra, coefficient)
-                symbol_data.extend(extra)
+                # If the stored symbol is larger than the one we're
+                # processing - adjust the size of the incoming symbol
+                if len(symbol_data_i) > len(symbol_data):
+                    extra = symbol_data_i[len(symbol_data) :]
+                    self.field.vector_multiply_into(extra, coefficient)
+                    symbol_data.extend(extra)
 
         return pivot

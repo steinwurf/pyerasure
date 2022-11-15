@@ -103,16 +103,17 @@ class Encoder:
         if window not in self.stream():
             raise ValueError("Window not in stream.")
 
-        frame = utils.to_frame(self.field.elements_per_byte, window)
         written = 0
         symbols = []
+        frame = utils.to_frame(self.field.elements_per_byte, window)
         for index in frame:
             if index not in window:
                 continue
 
             coefficient = self.field.get_value(
-                coefficients, utils.relative_index(window, index)
+                coefficients, utils.relative_index(frame, index)
             )
+
             if coefficient == 0:
                 continue
 
