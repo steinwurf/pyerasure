@@ -3,6 +3,7 @@
 
 import os
 import waflib
+import shutil
 
 from waflib.Build import BuildContext
 
@@ -22,6 +23,10 @@ def options(opt):
         help="Set the prefix folder where pytest executes the tests",
     )
 
+    opt.add_option(
+        '--cloudflare-auth', default=False, dest='cloudflare_auth',
+        action='store_true', help='Use when deploying to Cloudflare'
+    )
 
 def configure(conf):
     pass
@@ -124,6 +129,11 @@ def _pytest(bld, venv):
 
 def docs(ctx):
     """Build the documentation in a virtualenv"""
+    if ctx.options.cloudflare_auth:
+        shutil.rmtree("./functions", ignore_errors=True)
+        os.system("git clone git@github.com:steinwurf/cloudflare-auth.git")
+        shutil.copytree('cloudflare-auth/functions', './functions')
+        shutil.rmtree("./cloudflare-auth", ignore_errors=True)
 
     with ctx.create_virtualenv() as venv:
 
