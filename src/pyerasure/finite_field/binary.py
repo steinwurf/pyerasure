@@ -98,6 +98,8 @@ class Binary:
         Multiply the vector y with the constant c and then add the result
         to vector x.
         """
+        assert x is not None
+        assert y is not None
 
         if c > cls.max_value:
             raise ValueError(f"c must be less than {cls.max_value}")
@@ -111,7 +113,7 @@ class Binary:
 
     @classmethod
     def vector_multiply_into(cls, x: bytearray, c: int):
-        """Multiply the vector x with the vector y."""
+        """Multiply the vector x with the constant c."""
 
         if c > cls.max_value:
             raise ValueError(f"c must be less than {cls.max_value}")
@@ -129,5 +131,7 @@ class Binary:
 
     @classmethod
     def vector_multiply_subtract_into(cls, x: bytearray, y: bytes, c: int):
-        """Multiply the vector x with the vector y and subtract the result from c."""
+        """Multiply the vector y with the constant c and subtract the result from x."""
+        assert x is not None
+        assert y is not None
         cls.vector_multiply_add_into(x, y, c)

@@ -173,8 +173,7 @@ class Decoder:
         pivot_index = self.__forward_substitute_to_pivot(symbol_data, coefficients)
         if pivot_index is None:
             return
-        if not self.field.is_binary():
-            self.__normalize(symbol_data, coefficients, pivot_index)
+        self.__normalize(symbol_data, coefficients, pivot_index)
         self.__forward_substitute_from_pivot(symbol_data, coefficients, pivot_index)
         self.__backward_substitute(symbol_data, coefficients, pivot_index)
 
@@ -354,6 +353,10 @@ class Decoder:
         :param coefficients: The coefficients of the symbol.
         :param index: The index of the symbol.
         """
+        if self.field.is_binary():
+            # Binary fields are already normalized
+            return
+
         coefficient = self.field.get_value(coefficients, index)
 
         inverted_coefficient = self.field.invert(coefficient)

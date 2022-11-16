@@ -52,7 +52,7 @@ class Decoder:
         self._coefficients_offsets: list[Optional[int]] = []
         """The offset of the coefficients, in symbols."""
 
-        self._symbol_status: list[Optional[Decoder.SymbolStatus]] = []
+        self._symbol_status: list[Decoder.SymbolStatus] = []
         """The status of the symbols."""
 
     @property
@@ -144,12 +144,58 @@ class Decoder:
         relative_index = utils.relative_index(self.stream(), index)
         if self._symbol_status[relative_index] != Decoder.SymbolStatus.DECODED:
             # Check coefficients
-            if self.__is_coefficients_decoded(relative_index):
-                self._symbol_status[relative_index] = Decoder.SymbolStatus.DECODED
+            if self.__is_coefficients_decoded(index):
+                self.__set_symbol_decoded(index)
                 return True
             return False
         else:
             return True
+
+    def __set_symbol_partial_decoded(
+        self, coefficients: bytearray, window: Range, index: int
+    ):
+        """
+        Set a symbol as partially decoded.
+
+        :param coefficients: The coefficients of the symbol.
+        :param offset: The offset of the coefficients.
+        :param index: The index of the symbol.
+        """
+        if index not in self.stream():
+            raise ValueError(f"Invalid symbol index index")
+
+        relative_index = utils.relative_index(self.stream(), index)
+        assert self._symbol_status[relative_index] == Decoder.SymbolStatus.MISSING
+
+        if utils.is_coefficients_decoded(coefficients, window):
+            self._symbol_status[relative_index] = Decoder.SymbolStatus.DECODED
+            return
+
+        self._coefficients[relative_index] = coefficients
+        self._coefficients_offsets[relative_index] = window.lower_bound
+        self._symbol_status[relative_index] = Decoder.SymbolStatus.PARTIALLY_DECODED
+
+    def __set_symbol_decoded(self, index: int):
+        """
+        Set a symbol as decoded.
+
+        :param index: The index of the symbol.
+        """
+        if index not in self.stream():
+            raise ValueError(f"Invalid symbol index index")
+
+        relative_index = utils.relative_index(self.stream(), index)
+
+        assert self._symbol_status[relative_index] != Decoder.SymbolStatus.DECODED
+
+        if (
+            self._symbol_status[relative_index]
+            == Decoder.SymbolStatus.PARTIALLY_DECODED
+        ):
+            self._coefficients[relative_index] = None
+            self._coefficients_offsets[relative_index] = None
+
+        self._symbol_status[relative_index] = Decoder.SymbolStatus.DECODED
 
     def symbol_data(self, index: int) -> bytearray:
         """
@@ -162,6 +208,18 @@ class Decoder:
 
         return self._symbols_data[utils.relative_index(self.stream(), index)]
 
+    def __set_symbol_data(self, index: int, symbol_data: bytearray):
+        """
+        Set the data of a symbol.
+
+        :param index: The index of the symbol.
+        :param symbol_data: The data of the symbol.
+        """
+        if index not in self.stream():
+            raise ValueError(f"Invalid symbol index index")
+
+        self._symbols_data[utils.relative_index(self.stream(), index)] = symbol_data
+
     def coefficients(self, index: int) -> Tuple[int, bytearray]:
         """
         Get the coefficients and coefficients offset of a symbol.
@@ -172,41 +230,40 @@ class Decoder:
         if index not in self.stream():
             raise ValueError(f"Invalid symbol index index")
 
+        # The coefficients are only stored for coded symbols
+        assert not self.is_symbol_decoded(index)
+
         relative_index = utils.relative_index(self.stream(), index)
         return (
             self._coefficients_offsets[relative_index],
             self._coefficients[relative_index],
         )
 
-    def decode_systematic_symbol(self, symbol_data: bytearray, index: int):
+    def decode_systematic_symbol(self, symbol_data: bytearray, index: int) -> bool:
         """
         Feed a systematic, i.e, un-coded symbol to the decoder.
 
         :param symbol_data: The data of the symbol.
         :param index: The index of the given symbol.
+        :return: True if the symbol linearly independent.
         """
         if index not in self.stream():
             raise ValueError(f"Invalid symbol index index, self.stream()")
 
         if self.is_symbol_decoded(index):
-            return
+            return False
 
         if self.is_symbol_pivot(index):
             self.__swap_decode(symbol_data, index)
 
-        relative_index = utils.relative_index(self.stream(), index)
         # Store the symbol
-        coefficients = bytearray(1)
-        self.__set_value(coefficients, index, index, 1)
-
-        self._symbols_data[relative_index] = symbol_data
-        self._coefficients[relative_index] = coefficients
-        self._coefficients_offsets[relative_index] = index
-        self._symbol_status[relative_index] = Decoder.SymbolStatus.DECODED
+        self.__set_symbol_data(index, symbol_data)
+        self.__set_symbol_decoded(index)
+        return True
 
     def decode_symbol(
         self, symbol_data: bytearray, window: Range, coefficients: bytearray
-    ):
+    ) -> bool:
         """
         Feed a coded symbol to the decoder.
 
@@ -214,6 +271,7 @@ class Decoder:
         :param window: The window of the symbol.
         :param coefficients: The coding coefficients that describe the
                              encoding performed on the symbol.
+        :return: True if the symbol linearly independent.
         """
         if window.empty():
             raise ValueError("Empty window")
@@ -222,70 +280,18 @@ class Decoder:
             raise ValueError(f"Invalid window {window} for stream {self.stream()}")
 
         if len(window) == 1:
-            self.decode_systematic_symbol(symbol_data, window.lower_bound)
-            return
+            return self.decode_systematic_symbol(symbol_data, window.lower_bound)
 
         pivot = self.__forward_substitute(symbol_data, window, coefficients)
         if pivot is None:
-            return
+            return False
 
-        # self.__normalize(symbol_data, window, coefficients, pivot)
+        self.__normalize(symbol_data, window, coefficients, pivot)
+        self.__set_symbol_data(pivot, symbol_data)
+        self.__set_symbol_partial_decoded(coefficients, window, pivot)
 
-        # relative_pivot = utils.relative_index(self.stream(), pivot)
-        # self._symbols_data[relative_pivot] = symbol_data
-        # self._coefficients[relative_pivot] = coefficients
-        # self._coefficients_offsets[relative_pivot] = window.lower_bound
-
-        # self._symbol_status[relative_pivot] = Decoder.SymbolStatus.PARTIALLY_DECODED
-
-    def __get_value(self, coefficients: bytearray, offset: int, index: int) -> int:
-        """
-        Get the value of a coefficient.
-
-        :param coefficients: The coefficients.
-        :param offset: The coefficients offset.
-        :param index: The index of the coefficient.
-        :return: The value of the coefficient.
-        """
-        if index < offset:
-            # The index is before the start of the coeficients.
-            # This may be an error, but effectively it means that the
-            # coefficient is zero.
-            return 0
-
-        if index >= offset + self.field.bytes_to_elements(len(coefficients)):
-            # The index is after the end of the coefficients.
-            # This may be an error, but effectively it means that the
-            # coefficient is zero.
-            return 0
-
-        byte_offset = (
-            offset // self.field.elements_per_byte
-        ) * self.field.elements_per_byte
-        return self.field.get_value(coefficients, index - byte_offset)
-
-    def __set_value(self, coefficients: bytearray, offset: int, index: int, value: int):
-        """
-        Get the value of a coefficient.
-
-        :param coefficients: The coefficients.
-        :param offset: The coefficients offset.
-        :param index: The index of the coefficient.
-        :return: The value of the coefficient.
-        :param value: The value of the coefficient.
-        """
-        if index < offset:
-            # The index is before the start of the coeficients.
-            raise ValueError(f"Invalid symbol index index, before offset offset")
-
-        if index >= offset + self.field.bytes_to_elements(len(coefficients)):
-            # The index is after the end of the coefficients.
-            raise ValueError(f"Invalid symbol index index, after offset offset")
-
-        byte_offset = (
-            offset // self.field.elements_per_byte
-        ) * self.field.elements_per_byte
-        return self.field.set_value(coefficients, index - byte_offset, value)
+        self.__backward_substitute(pivot)
+        return True
 
     def __is_coefficients_decoded(self, index: int):
         """
@@ -303,19 +309,7 @@ class Decoder:
         assert offset is not None
         assert coefficients is not None
         window = Range(offset, offset + self.field.bytes_to_elements(len(coefficients)))
-        frame = utils.to_frame(self.field.elements_per_byte, window)
-
-        for i in frame:
-            if i not in window or i == index:
-                continue
-
-            if (
-                self.field.get_value(coefficients, utils.relative_index(frame, index))
-                != 0
-            ):
-                return False
-
-        return True
+        return utils.is_coefficients_decoded(self.field, coefficients, window, index)
 
     def __swap_decode(self, symbol_data: bytearray, index: int):
         """
@@ -348,7 +342,7 @@ class Decoder:
                 # If the coefficient is zero we move to the next index
                 continue
 
-            if self.is_symbol_pivot(index):
+            if not self.is_symbol_pivot(index):
                 if pivot is None:
                     # If we have a non-zero coefficient and not already a pivot
                     # we found a pivot
@@ -360,19 +354,17 @@ class Decoder:
             is_symbol_decoded_i = self.is_symbol_decoded(index)
             symbol_data_i = self.symbol_data(index)
 
-            """
-            0 0 0 0 0 0 0 1 0 0 0 0    offset: 0
-              0 0 0 0 0 0 1 0 0 0 0 0  offset: 1
-                0 0 0 0 0 1 0 0 0      offset: 2
-            0 0 0 0 0 0 0 1 0 0 0 0    offset: 0
-                        0 1 0 0 0 0    offset: 5
-            """
-            self.field.vector_multiply_subtract_into(
-                symbol_data, symbol_data_i, coefficient
-            )
-
             if is_symbol_decoded_i:
-                assert len(symbol_data_i) > len(symbol_data)
+                # If symbol i is decoded, the incoming symbol
+                # cannot be smaller and still contain symbol i.
+                if len(symbol_data_i) > len(symbol_data):
+                    symbol_data_i = symbol_data_i[: len(symbol_data)]
+                    self.__set_symbol_data(index, symbol_data_i)
+                assert len(symbol_data_i) <= len(symbol_data)
+
+                self.field.vector_multiply_subtract_into(
+                    symbol_data, symbol_data_i, coefficient
+                )
 
                 coefficient = self.field.set_value(
                     coefficients, utils.relative_index(frame, index), 0
@@ -385,6 +377,10 @@ class Decoder:
                     coefficient,
                 )
 
+                self.field.vector_multiply_subtract_into(
+                    symbol_data, symbol_data_i, coefficient
+                )
+
                 # If the stored symbol is larger than the one we're
                 # processing - adjust the size of the incoming symbol
                 if len(symbol_data_i) > len(symbol_data):
@@ -393,3 +389,134 @@ class Decoder:
                     symbol_data.extend(extra)
 
         return pivot
+
+    def __backward_substitute(self, pivot: int):
+        """
+        Backward substitute the given pivot.
+
+        :param pivot: The pivot to backward substitute.
+        """
+        symbol_data = self.symbol_data(pivot)
+        is_decoded = self.is_symbol_decoded(pivot)
+        offset, coefficients = self.coefficients(pivot)
+
+        # We found a "1" that nobody else had as pivot, we now
+        # substract this packet from other coded packets
+        # - if they have non "0" on our pivot place
+        range = Range(self.stream().lower_bound, pivot)
+
+        for index in range:
+            if self.is_symbol_missing(index):
+                # We do not have a symbol yet here
+                continue
+
+            if self.is_symbol_decoded(index):
+                # We know that we have no non-zero elements
+                # outside the pivot position when a symbol is fully decoded
+                continue
+
+            offset_i, coefficients_i = self.coefficients(index)
+            frame_i = utils.to_frame(self.field.elements_per_byte, Range(offset_i, self.field.bytes_to_elements(len(coefficients_i))))
+            coefficient = self.field.get_value(
+                coefficients_i, utils.relative_index(frame_i, pivot)
+            )
+
+            if coefficient == 0:
+                # The coefficient is zero, skip
+                continue
+
+            symbol_data_i = self.symbol_data(index)
+
+            if is_decoded:
+                # If symbol i is decoded, the incoming symbol
+                # cannot be smaller and still contain symbol i.
+                if len(symbol_data) > len(symbol_data_i):
+                    symbol_data = symbol_data[: len(symbol_data_i)]
+                    self.__set_symbol_data(pivot, symbol_data)
+                assert len(symbol_data) <= len(symbol_data_i)
+
+                self.field.vector_multiply_subtract_into(
+                    symbol_data_i, symbol_data, coefficient
+                )
+                frame = utils.to_frame(self.field.elements_per_byte, Range(offset, self.field.bytes_to_elements(len(coefficients))))
+                coefficient = self.field.set_value(
+                    coefficients, utils.relative_index(frame, index), 0
+                )
+            else:
+                self.field.vector_multiply_subtract_into(
+                    memoryview(coefficients_i)[offset_i:],
+                    memoryview(coefficients)[offset:],
+                    coefficient,
+                )
+
+                self.field.vector_multiply_subtract_into(
+                    symbol_data, symbol_data_i, coefficient
+                )
+
+                # If the stored symbol is larger than the one we're
+                # processing - adjust the size of the incoming symbol
+                if len(symbol_data_i) > len(symbol_data):
+                    extra = symbol_data_i[len(symbol_data) :]
+                    self.field.vector_multiply_into(extra, coefficient)
+                    symbol_data.extend(extra)
+
+            if len(symbol_data_i) < len(symbol_data):
+
+                if is_decoded:
+                    # symbol i is smaller than the incoming symbol. In this
+                    # case we deduce that the incoming symbol is infact smaller
+                    # than what we think it is.
+                    # This is because, since the incoming symbol is decoded,
+                    # and symbol_i mixed with the incoming symbol, the incoming
+                    # symbol must be equal to or less than the size of symbol i.
+                    symbol_data = symbol_data[: len(symbol_data_i)]
+                    self.__set_symbol_data(pivot, symbol_data)
+                else:
+                    # Increase the number of bytes in symbol i. This
+                    # happens when pivot symbol is substracted from symbol i.
+
+
+
+            if (coefficient == 1U)
+            {
+                Super::vector_subtract_into(coefficients_i, coefficients);
+
+                Super::vector_subtract_into(symbol_i, symbol_data,
+                                            symbol_bytes);
+            }
+            else
+            {
+                Super::vector_multiply_subtract_into(coefficients_i,
+                                                     coefficients, coefficient);
+
+                Super::vector_multiply_subtract_into(symbol_i, symbol_data,
+                                                     coefficient, symbol_bytes);
+            }
+
+            if (Super::is_coefficients_decoded(index))
+            {
+                Super::set_symbol_decoded(index);
+            }
+        }
+
+    def __normalize(
+        self, symbol_data: bytearray, window: Range, coefficients: bytearray, pivot: int
+    ):
+        """
+        Normalize the symbol.
+
+        :param symbol_data: The data of the symbol.
+        :param window: The window of the symbol.
+        :param coefficients: The coefficients of the symbol.
+        :param pivot: The pivot of the symbol.
+        """
+        frame = utils.to_frame(self.field.elements_per_byte, window)
+        pivot_coefficient = self.field.get_value(
+            coefficients, utils.relative_index(frame, pivot)
+        )
+
+        if pivot_coefficient == 1:
+            return
+
+        self.field.vector_multiply_into(symbol_data, pivot_coefficient)
+        self.field.vector_multiply_into(coefficients, pivot_coefficient)

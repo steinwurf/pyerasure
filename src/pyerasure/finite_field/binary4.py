@@ -106,6 +106,8 @@ class Binary4:
         Multiply the vector y with the constant c and then add the result
         to vector x.
         """
+        assert x is not None
+        assert y is not None
 
         if c > self.max_value:
             raise ValueError(f"c must be less than {self.max_value}")
@@ -119,7 +121,7 @@ class Binary4:
             x[i] = (x1 << 4) | x2
 
     def vector_multiply_into(self, x: bytearray, c: int):
-        """Multiply the vector x with the vector y."""
+        """Multiply the vector x with the constant c."""
         if c == 0:
             for i in range(len(x)):
                 x[i] = 0
@@ -142,5 +144,7 @@ class Binary4:
         self.vector_add_into(x, y)
 
     def vector_multiply_subtract_into(self, x: bytearray, y: bytes, c: int):
-        """Multiply the vector x with the vector y and subtract the result from c."""
+        """Multiply the vector y with the constant c and subtract the result from x."""
+        assert x is not None
+        assert y is not None
         self.vector_multiply_add_into(x, y, c)

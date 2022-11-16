@@ -113,7 +113,7 @@ class TestSlideEncodeDecode(unittest.TestCase):
                 if random.randint(0, 100) >= loss_probability:
                     while window not in decoder.stream():
                         decoder.push_symbol()
-                    decoder.decode_symbol(symbol, window, coefficients)
+                    decoder.decode_symbol(symbol, window, bytearray(coefficients))
                 else:
                     # lost
                     pass

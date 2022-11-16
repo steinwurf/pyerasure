@@ -65,14 +65,28 @@ def coefficients_bytes(elements_per_byte: int, window: Range) -> int:
     return len(byte_range)
 
 
-def to_byte_index(elements_per_byte: int, index: int) -> int:
-    """Convert a symbol index to a byte index.
-
-    :param elements_per_byte: The number of elements per byte.
-    :param index: The index.
-    :return: The byte index.
+def is_coefficients_decoded(
+    field: Union[Binary, Binary4, Binary8],
+    window: Range,
+    coefficients: bytes,
+    index: int,
+) -> bool:
+    """Check if the coefficients are decoded.
+    :param field: The finite field.
+    :param window: The window.
+    :param coefficients: The coefficients.
+    :param index: The index of the symbol.
+    :return: True if the coefficients are decoded, False otherwise.
     """
-    return (index // elements_per_byte) * elements_per_byte
+    frame = to_frame(field.elements_per_byte, window)
+    for i in frame:
+        if i not in window or i == index:
+            continue
+
+        if field.get_value(coefficients, relative_index(frame, index)) != 0:
+            return False
+
+    return True
 
 
 def relative_index(range: Range, index: int) -> int:

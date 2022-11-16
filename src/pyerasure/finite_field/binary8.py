@@ -95,6 +95,8 @@ class Binary8:
         Multiply the vector y with the constant c and then add the result
         to vector x.
         """
+        assert x is not None
+        assert y is not None
 
         if c > self.max_value:
             raise ValueError(f"c must be less than {self.max_value}")
@@ -103,12 +105,8 @@ class Binary8:
         for i in range(min_len):
             x[i] ^= self._table.multiply(y[i], c)
 
-    def vector_multiply_subtract_into(self, x: bytearray, y: bytes, c: int):
-        """Multiply the vector x with the vector y and subtract the result from c."""
-        self.vector_multiply_add_into(x, y, c)
-
     def vector_multiply_into(self, x: bytearray, c: int):
-        """Multiply the vector x with the vector y."""
+        """Multiply the vector x with the constant c."""
 
         if c == 0:
             for i in range(len(x)):
@@ -123,3 +121,9 @@ class Binary8:
 
         for i in range(len(x)):
             x[i] = self._table.multiply(x[i], c)
+
+    def vector_multiply_subtract_into(self, x: bytearray, y: bytes, c: int):
+        """Multiply the vector y with the constant c and subtract the result from x."""
+        assert x is not None
+        assert y is not None
+        self.vector_multiply_add_into(x, y, c)
