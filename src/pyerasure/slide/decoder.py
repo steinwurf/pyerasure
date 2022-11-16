@@ -325,10 +325,9 @@ class Decoder:
     ) -> Optional[int]:
 
         offset = window.upper_bound
-
-        # Loop over all the symbol/coefficient indicies in the frame
         pivot = None
 
+        # Loop over all the symbol/coefficient indicies in the frame
         frame = utils.to_frame(self.field.elements_per_byte, window)
         for index in frame:
             if index not in window:
@@ -351,10 +350,9 @@ class Decoder:
 
             # We already have a pivot here get the corresponding symbol and
             # coefficients vector and elimitate those in the incoming symbol
-            is_symbol_decoded_i = self.is_symbol_decoded(index)
             symbol_data_i = self.symbol_data(index)
 
-            if is_symbol_decoded_i:
+            if self.is_symbol_decoded(index):
                 # If symbol i is decoded, the incoming symbol
                 # cannot be smaller and still contain symbol i.
                 if len(symbol_data_i) > len(symbol_data):
@@ -399,6 +397,9 @@ class Decoder:
         symbol_data = self.symbol_data(pivot)
         is_decoded = self.is_symbol_decoded(pivot)
         offset, coefficients = self.coefficients(pivot)
+        frame = utils.to_frame(
+            self.field.elements_per_byte,
+            Range(offset, self.field.bytes_to_elements(len(coefficients))))
 
         # We found a "1" that nobody else had as pivot, we now
         # substract this packet from other coded packets
@@ -438,7 +439,7 @@ class Decoder:
                 self.field.vector_multiply_subtract_into(
                     symbol_data_i, symbol_data, coefficient
                 )
-                frame = utils.to_frame(self.field.elements_per_byte, Range(offset, self.field.bytes_to_elements(len(coefficients))))
+
                 coefficient = self.field.set_value(
                     coefficients, utils.relative_index(frame, index), 0
                 )
