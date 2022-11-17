@@ -125,7 +125,7 @@ class Encoder:
         encoded_symbol = bytearray(written)
         for coefficient, symbol_data in symbols:
             self.field.vector_multiply_add_into(
-                encoded_symbol, symbol_data, coefficient
+                memoryview(encoded_symbol)[: len(symbol_data)], symbol_data, coefficient
             )
 
         return encoded_symbol

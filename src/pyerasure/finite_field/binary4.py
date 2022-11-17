@@ -109,11 +109,13 @@ class Binary4:
         assert x is not None
         assert y is not None
 
+        if len(x) > len(y):
+            raise ValueError("x must be at least as long as y")
+
         if c > self.max_value:
             raise ValueError(f"c must be less than {self.max_value}")
 
-        min_len = min(len(x), len(y))
-        for i in range(min_len):
+        for i in range(len(y)):
             x1 = x[i] >> 4
             x1 ^= self._table.multiply(y[i] >> 4, c)
             x2 = x[i] & 0xF

@@ -76,6 +76,13 @@ class Range:
         """Check if the range is empty."""
         return self.lower_bound == self.upper_bound
 
+    def intersect(self, other: Range) -> Range:
+        """Compute the intersection of two ranges."""
+        return Range(
+            max(self.lower_bound, other.lower_bound),
+            min(self.upper_bound, other.upper_bound),
+        )
+
     def __len__(self) -> int:
         return self.upper_bound - self.lower_bound
 

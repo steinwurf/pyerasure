@@ -131,6 +131,23 @@ class Decoder:
             != Decoder.SymbolStatus.MISSING
         )
 
+    def __is_symbol_decoded(self, index: int) -> bool:
+        """
+        Check if a symbol is decoded.
+
+        :param index: The index of the symbol.
+        :return: True if the symbol is decoded.
+        """
+
+        if index not in self.stream():
+            raise ValueError(f"Invalid symbol index index")
+
+        relative_index = utils.relative_index(self.stream(), index)
+        return (
+            self._symbol_status[utils.relative_index(self.stream(), index)]
+            == Decoder.SymbolStatus.DECODED
+        )
+
     def is_symbol_decoded(self, index: int) -> bool:
         """
         Check if a symbol is decoded.
@@ -142,14 +159,15 @@ class Decoder:
             raise ValueError(f"Invalid symbol index index")
 
         relative_index = utils.relative_index(self.stream(), index)
-        if self._symbol_status[relative_index] != Decoder.SymbolStatus.DECODED:
+        if (
+            self._symbol_status[relative_index]
+            == Decoder.SymbolStatus.PARTIALLY_DECODED
+        ):
             # Check coefficients
             if self.__is_coefficients_decoded(index):
                 self.__set_symbol_decoded(index)
-                return True
-            return False
-        else:
-            return True
+
+        return self.__is_symbol_decoded(index)
 
     def __set_symbol_partial_decoded(
         self, coefficients: bytearray, window: Range, index: int
@@ -167,12 +185,12 @@ class Decoder:
         relative_index = utils.relative_index(self.stream(), index)
         assert self._symbol_status[relative_index] == Decoder.SymbolStatus.MISSING
 
-        if utils.is_coefficients_decoded(coefficients, window):
+        if utils.is_coefficients_decoded(self.field, window, coefficients, index):
             self._symbol_status[relative_index] = Decoder.SymbolStatus.DECODED
             return
-
         self._coefficients[relative_index] = coefficients
-        self._coefficients_offsets[relative_index] = window.lower_bound
+        frame = utils.to_frame(self.field.elements_per_byte, window)
+        self._coefficients_offsets[relative_index] = frame.lower_bound
         self._symbol_status[relative_index] = Decoder.SymbolStatus.PARTIALLY_DECODED
 
     def __set_symbol_decoded(self, index: int):
@@ -231,7 +249,7 @@ class Decoder:
             raise ValueError(f"Invalid symbol index index")
 
         # The coefficients are only stored for coded symbols
-        assert not self.is_symbol_decoded(index)
+        assert not self.__is_symbol_decoded(index)
 
         relative_index = utils.relative_index(self.stream(), index)
         return (
@@ -302,14 +320,15 @@ class Decoder:
         """
         if self.is_symbol_missing(index):
             return False
-        elif self.is_symbol_decoded(index):
+
+        if self.__is_symbol_decoded(index):
             return True
 
         offset, coefficients = self.coefficients(index)
         assert offset is not None
         assert coefficients is not None
         window = Range(offset, offset + self.field.bytes_to_elements(len(coefficients)))
-        return utils.is_coefficients_decoded(self.field, coefficients, window, index)
+        return utils.is_coefficients_decoded(self.field, window, coefficients, index)
 
     def __swap_decode(self, symbol_data: bytearray, index: int):
         """
@@ -324,7 +343,6 @@ class Decoder:
         self, symbol_data: bytearray, window: Range, coefficients: bytearray
     ) -> Optional[int]:
 
-        offset = window.upper_bound
         pivot = None
 
         # Loop over all the symbol/coefficient indicies in the frame
@@ -350,7 +368,7 @@ class Decoder:
 
             # We already have a pivot here get the corresponding symbol and
             # coefficients vector and elimitate those in the incoming symbol
-            symbol_data_i = self.symbol_data(index)
+            symbol_data_i = memoryview(self.symbol_data(index)).toreadonly()
 
             if self.is_symbol_decoded(index):
                 # If symbol i is decoded, the incoming symbol
@@ -364,19 +382,16 @@ class Decoder:
                     symbol_data, symbol_data_i, coefficient
                 )
 
-                coefficient = self.field.set_value(
+                self.field.set_value(
                     coefficients, utils.relative_index(frame, index), 0
                 )
             else:
-                offset_i, coefficients_i = self.coefficients(index)
-                self.field.vector_multiply_subtract_into(
-                    memoryview(coefficients)[offset:],
-                    memoryview(coefficients_i)[offset_i:],
-                    coefficient,
-                )
 
                 self.field.vector_multiply_subtract_into(
-                    symbol_data, symbol_data_i, coefficient
+                    symbol_data,
+                    # Cap the length of symbol i to the length of the incoming symbol
+                    memoryview(symbol_data_i)[: len(symbol_data)],
+                    coefficient,
                 )
 
                 # If the stored symbol is larger than the one we're
@@ -386,6 +401,65 @@ class Decoder:
                     self.field.vector_multiply_into(extra, coefficient)
                     symbol_data.extend(extra)
 
+                offset_i, coefficients_i = self.coefficients(index)
+                assert offset_i is not None
+                assert coefficients_i is not None
+                frame_i = utils.to_frame(
+                    self.field.elements_per_byte,
+                    Range(
+                        offset_i,
+                        offset_i + self.field.bytes_to_elements(len(coefficients_i)),
+                    ),
+                )
+
+                if frame_i in frame:
+                    # The coefficients_i are fully contained in the frame
+                    # of coefficients
+                    diff = frame.lower_bound - frame_i.lower_bound
+                    self.field.vector_multiply_subtract_into(
+                        memoryview(coefficients)[diff : len(coefficients) - diff],
+                        memoryview(coefficients_i)[diff : len(coefficients_i) - diff],
+                        coefficient,
+                    )
+                else:
+                    # The coefficients_i are not fully contained in the frame
+                    # of coefficients
+                    frame_int = frame.intersect(frame_i)
+                    assert not frame_int.empty()
+
+                    self.field.vector_multiply_subtract_into(
+                        memoryview(coefficients)[
+                            frame_int.lower_bound
+                            - frame.lower_bound : len(coefficients)
+                            - (frame.upper_bound - frame_int.upper_bound)
+                        ],
+                        memoryview(coefficients_i)[
+                            frame_int.lower_bound
+                            - frame_i.lower_bound : len(coefficients_i)
+                            - (frame_i.upper_bound - frame_int.upper_bound)
+                        ],
+                        coefficient,
+                    )
+                    if frame.lower_bound > frame_i.lower_bound:
+                        # Handle the coefficients to the left of the frame
+                        diff = frame.lower_bound - frame_i.lower_bound
+                        frame.lower_bound = frame_i.lower_bound
+                        window.lower_bound = frame.lower_bound
+                        extra = coefficients_i[:diff]
+                        self.field.vector_multiply_into(extra, coefficient)
+                        # prepend extra to coefficients
+                        coefficients = bytearray(extra) + coefficients
+
+                    if frame.upper_bound < frame_i.upper_bound:
+                        # Handle the coefficients to the right of the frame
+                        diff = frame_i.upper_bound - frame.upper_bound
+                        frame.upper_bound = frame_i.upper_bound
+                        extra = coefficients_i[-diff:]
+                        self.field.vector_multiply_into(extra, coefficient)
+                        # append extra to coefficients
+                        coefficients.extend(extra)
+                    assert frame_i in frame
+
         return pivot
 
     def __backward_substitute(self, pivot: int):
@@ -394,19 +468,18 @@ class Decoder:
 
         :param pivot: The pivot to backward substitute.
         """
-        symbol_data = self.symbol_data(pivot)
+        symbol_data = memoryview(self.symbol_data(pivot)).toreadonly()
         is_decoded = self.is_symbol_decoded(pivot)
         offset, coefficients = self.coefficients(pivot)
         frame = utils.to_frame(
             self.field.elements_per_byte,
-            Range(offset, self.field.bytes_to_elements(len(coefficients))))
+            Range(offset, offset + self.field.bytes_to_elements(len(coefficients))),
+        )
 
         # We found a "1" that nobody else had as pivot, we now
         # substract this packet from other coded packets
         # - if they have non "0" on our pivot place
-        range = Range(self.stream().lower_bound, pivot)
-
-        for index in range:
+        for index in Range(self.stream().lower_bound, pivot):
             if self.is_symbol_missing(index):
                 # We do not have a symbol yet here
                 continue
@@ -417,7 +490,17 @@ class Decoder:
                 continue
 
             offset_i, coefficients_i = self.coefficients(index)
-            frame_i = utils.to_frame(self.field.elements_per_byte, Range(offset_i, self.field.bytes_to_elements(len(coefficients_i))))
+            frame_i = utils.to_frame(
+                self.field.elements_per_byte,
+                Range(
+                    offset_i,
+                    offset_i + self.field.bytes_to_elements(len(coefficients_i)),
+                ),
+            )
+            if frame_i.upper_bound <= frame.lower_bound:
+                # The coefficients_i are fully to the left of the coefficients
+                continue
+
             coefficient = self.field.get_value(
                 coefficients_i, utils.relative_index(frame_i, pivot)
             )
@@ -429,21 +512,23 @@ class Decoder:
             symbol_data_i = self.symbol_data(index)
 
             if is_decoded:
-                # If symbol i is decoded, the incoming symbol
-                # cannot be smaller and still contain symbol i.
+                # If the incoming symbol is decoded, symbol i cannot be
+                # larger than the incoming symbol
                 if len(symbol_data) > len(symbol_data_i):
-                    symbol_data = symbol_data[: len(symbol_data_i)]
-                    self.__set_symbol_data(pivot, symbol_data)
+                    # Resize symbol i to the size of the incoming symbol
+                    symbol_data_i = symbol_data_i[: len(symbol_data)]
+                    self.__set_symbol_data(index, symbol_data_i)
                 assert len(symbol_data) <= len(symbol_data_i)
 
                 self.field.vector_multiply_subtract_into(
                     symbol_data_i, symbol_data, coefficient
                 )
-
-                coefficient = self.field.set_value(
+                # Zero out the coefficient at the index position
+                self.field.set_value(
                     coefficients, utils.relative_index(frame, index), 0
                 )
             else:
+                raise NotImplementedError()
                 self.field.vector_multiply_subtract_into(
                     memoryview(coefficients_i)[offset_i:],
                     memoryview(coefficients)[offset:],
@@ -475,30 +560,7 @@ class Decoder:
                 else:
                     # Increase the number of bytes in symbol i. This
                     # happens when pivot symbol is substracted from symbol i.
-
-
-
-            if (coefficient == 1U)
-            {
-                Super::vector_subtract_into(coefficients_i, coefficients);
-
-                Super::vector_subtract_into(symbol_i, symbol_data,
-                                            symbol_bytes);
-            }
-            else
-            {
-                Super::vector_multiply_subtract_into(coefficients_i,
-                                                     coefficients, coefficient);
-
-                Super::vector_multiply_subtract_into(symbol_i, symbol_data,
-                                                     coefficient, symbol_bytes);
-            }
-
-            if (Super::is_coefficients_decoded(index))
-            {
-                Super::set_symbol_decoded(index);
-            }
-        }
+                    pass
 
     def __normalize(
         self, symbol_data: bytearray, window: Range, coefficients: bytearray, pivot: int

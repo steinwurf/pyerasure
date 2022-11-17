@@ -88,8 +88,10 @@ class Binary:
     @classmethod
     def vector_add_into(cls, x: bytearray, y: bytes):
         """Add y into x."""
-        min_len = min(len(x), len(y))
-        for i in range(min_len):
+        if len(x) > len(y):
+            raise ValueError("x must be at least as long as y")
+
+        for i in range(len(y)):
             x[i] ^= y[i]
 
     @classmethod
@@ -104,11 +106,13 @@ class Binary:
         if c > cls.max_value:
             raise ValueError(f"c must be less than {cls.max_value}")
 
+        if len(x) > len(y):
+            raise ValueError("x must be at least as long as y")
+
         if c == 0:
             return
 
-        min_len = min(len(x), len(y))
-        for i in range(min_len):
+        for i in range(len(y)):
             x[i] ^= y[i]
 
     @classmethod
@@ -127,6 +131,8 @@ class Binary:
     @classmethod
     def vector_subtract_into(cls, x: bytearray, y: bytes):
         """Substract y into x."""
+        assert x is not None
+        assert y is not None
         cls.vector_add_into(x, y)
 
     @classmethod

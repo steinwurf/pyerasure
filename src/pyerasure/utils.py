@@ -80,8 +80,11 @@ def is_coefficients_decoded(
     """
     frame = to_frame(field.elements_per_byte, window)
     for i in frame:
-        if i not in window or i == index:
+        if i not in window:
             continue
+
+        if i == index and field.get_value(coefficients, relative_index(window, i)) != 1:
+            return False
 
         if field.get_value(coefficients, relative_index(frame, index)) != 0:
             return False
