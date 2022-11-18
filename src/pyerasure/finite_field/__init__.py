@@ -18,3 +18,5 @@ from .full_table import FullTable
 from .binary import Binary
 from .binary4 import Binary4
 from .binary8 import Binary8
+from .element import Element
+from .vector import Vector

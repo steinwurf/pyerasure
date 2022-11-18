@@ -13,10 +13,10 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 from enum import Enum
 
-from pyerasure import finite_field
+from ..finite_field import Binary, Binary4, Binary8, Vector
 
 
 class Decoder:
@@ -29,7 +29,7 @@ class Decoder:
 
     def __init__(
         self,
-        field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
+        field: Union[Binary, Binary4, Binary8],
         symbols: int,
         symbol_bytes: int,
     ):
@@ -44,8 +44,8 @@ class Decoder:
         self._symbols = symbols
         self._symbol_bytes = symbol_bytes
         self._rank = 0
-        self._symbols_data = [None] * symbols
-        self._coefficients = [None] * symbols
+        self._symbols_data: list[Optional[Vector]] = [None] * symbols
+        self._coefficients: list[Optional[Vector]] = [None] * symbols
         self._symbol_status = [Decoder.SymbolStatus.MISSING] * symbols
 
     @property
@@ -59,9 +59,7 @@ class Decoder:
         return self._symbol_bytes
 
     @property
-    def field(
-        self,
-    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
+    def field(self) -> Union[Binary, Binary4, Binary8]:
         """The chosen finite field."""
         return self._field
 
@@ -133,7 +131,7 @@ class Decoder:
         if index >= self.symbols:
             raise ValueError(f"Invalid symbol index {index}")
 
-        return self._symbols_data[index]
+        return self._symbols_data[index].data
 
     def block_data(self) -> bytes:
         """
@@ -159,7 +157,7 @@ class Decoder:
         if index >= self.symbols:
             raise ValueError(f"Invalid symbol index {index}")
 
-        return self._coefficients[index]
+        return self._coefficients[index].data
 
     def decode_symbol(self, symbol_data: bytearray, coefficients: bytearray):
         """
@@ -170,18 +168,55 @@ class Decoder:
         :param coefficients: The coding coefficients that describe the
                              encoding performed on the symbol.
         """
-        pivot_index = self.__forward_substitute_to_pivot(symbol_data, coefficients)
+        self.__decode_symbol(
+            Vector(self.field, coefficients, self.symbols),
+            Vector(self.field, symbol_data),
+        )
+
+    def __decode_symbol(self, coefficients: Vector, symbol_data: Vector):
+
+        pivot_index = None
+
+        # Forwards substitution
+        for index, coefficient in coefficients:
+
+            if coefficient == 0:
+                continue
+
+            if not self.is_symbol_pivot(index):
+                if pivot_index is None:
+                    pivot_index = index
+                    # Binary fields are already normalized
+                    if not self.field.is_binary():
+                        coefficients *= ~coefficients[index]
+                        symbol_data *= ~coefficients[index]
+                continue
+
+            coefficients -= self._coefficients[index] * coefficient
+            symbol_data -= self._symbols_data[index] * coefficient
+
         if pivot_index is None:
             return
-        self.__normalize(symbol_data, coefficients, pivot_index)
-        self.__forward_substitute_from_pivot(symbol_data, coefficients, pivot_index)
-        self.__backward_substitute(symbol_data, coefficients, pivot_index)
 
-        # Store coded symbol
-        self._symbols_data[pivot_index] = symbol_data
-        self._coefficients[pivot_index] = coefficients
-        self._symbol_status[pivot_index] = Decoder.SymbolStatus.PARTIALLY_DECODED
-        self._rank += 1
+        self.__store(pivot_index, coefficients, symbol_data)
+
+        # Backward substitution
+        for index in range(self.symbols):
+            if index == pivot_index:
+                continue
+
+            if self.is_symbol_decoded(index):
+                continue
+
+            if self.is_symbol_missing(index):
+                continue
+
+            coefficient = self._coefficients[index][index]
+            if coefficient == 0:
+                continue
+
+            self._coefficients[index] -= coefficients * coefficient
+            self._symbols_data[index] -= symbol_data * coefficient
 
         if self.is_complete():
             # We have decoded all symbols
@@ -202,16 +237,32 @@ class Decoder:
             return
 
         if self.is_symbol_pivot(index):
-            self.__swap_decode(symbol_data, index)
+            # Swap decode
+
+            # Extract the existing symbol and coefficients and set the symbol as missing
+            symbol_i = self._symbols_data[index]
+            coefficients_i = self._coefficients[index]
+            self._symbols_data[index] = None
+            self._coefficients[index] = None
+            self._symbol_status[index] = Decoder.SymbolStatus.MISSING
+            self._rank -= 1
+
+            # Subtract the new pivot symbol
+            coefficients_i[0] = 0
+            symbol_i -= symbol_data
+
+            # Process the new coded symbol: we know that it must
+            # contain a larger pivot id than the current (unless it is reduced
+            # to all zeroes which is not possible as that would mean it was
+            # already decoded).
+            self.decode_symbol(symbol_i, coefficients_i)
 
         self._rank += 1
 
         # Store the symbol
-        self._symbols_data[index] = symbol_data
-        self._coefficients[index] = bytearray(
-            self.field.elements_to_bytes(self.symbols)
-        )
-        self.field.set_value(self.coefficients(index), index, 1)
+        self._symbols_data[index] = Vector(self.field, symbol_data)
+        self._coefficients[index] = Vector.allocate(self.field, self.symbols)
+        self._coefficients[index][index] = 1
         self._symbol_status[index] = Decoder.SymbolStatus.DECODED
 
     def recode_symbol(self, coefficients_in: bytes) -> Tuple[bytes, bytearray]:
@@ -223,173 +274,29 @@ class Decoder:
         :return: The recoded symbol and resulting coefficients.
         """
 
-        symbol_data = bytearray(self.symbol_bytes)
-        coefficients = bytearray(self.field.elements_to_bytes(self.symbols))
+        symbol_data, coefficients = self.__recode_symbol(
+            Vector(self.field, coefficients_in, self.symbols)
+        )
+        return symbol_data.data, coefficients.data
 
-        for index in range(self.symbols):
+    def __recode_symbol(self, coefficients_in: Vector) -> Tuple[Vector, Vector]:
 
-            value = self.field.get_value(coefficients_in, index)
+        symbol_data = Vector.allocate(
+            self.field, self.field.bytes_to_elements(self.symbol_bytes)
+        )
+        coefficients = Vector.allocate(self.field, self.symbols)
 
-            if value == 0:
+        for index, coefficient in coefficients_in:
+
+            if coefficient == 0:
                 continue
 
             assert self.is_symbol_pivot(index)
 
-            self.field.vector_multiply_add_into(
-                coefficients, self.coefficients(index), value
-            )
-            self.field.vector_multiply_add_into(
-                symbol_data,
-                self.symbol_data(index),
-                value,
-            )
+            coefficients += self._coefficients[index] * coefficient
+            symbol_data += self._symbols_data[index] * coefficient
+
         return symbol_data, coefficients
-
-    def __forward_substitute_to_pivot(
-        self, symbol_data: bytearray, coefficients: bytearray
-    ) -> int:
-        """
-        Forward substitute the given symbol to the pivot symbol.
-
-        :param symbol_data: The data of the symbol.
-        :param coefficients: The coefficients of the symbol.
-        :return: The index of the pivot symbol, or none if no pivot symbol
-        """
-        for index in range(self.symbols):
-            coefficient = self.field.get_value(coefficients, index)
-
-            if coefficient == 0:
-                continue
-
-            if not self.is_symbol_pivot(index):
-                return index
-
-            self.field.vector_multiply_subtract_into(
-                coefficients, self.coefficients(index), coefficient
-            )
-
-            self.field.vector_multiply_subtract_into(
-                symbol_data, self.symbol_data(index), coefficient
-            )
-
-        return None
-
-    def __forward_substitute_from_pivot(
-        self, symbol_data: bytearray, coefficients: bytearray, pivot: int
-    ):
-        """
-        Forward substitute the given symbol from the pivot symbol.
-
-        :param symbol_data: The data of the symbol.
-        :param coefficients: The coefficients of the symbol.
-        :param pivot: The index of the pivot symbol.
-        """
-
-        # Start right after the pivot_index position
-        for index in range(pivot + 1, self.symbols):
-            coefficient = self.field.get_value(coefficients, index)
-
-            if coefficient == 0:
-                continue
-
-            if not self.is_symbol_pivot(index):
-                continue
-
-            self.field.vector_multiply_subtract_into(
-                coefficients, self.coefficients(index), coefficient
-            )
-
-            self.field.vector_multiply_subtract_into(
-                symbol_data, self.symbol_data(index), coefficient
-            )
-
-    def __backward_substitute(
-        self, symbol_data: bytearray, coefficients: bytearray, pivot_index: int
-    ):
-        """
-        Backward substitute the given symbol.
-
-        :param symbol_data: The data of the symbol.
-        :param coefficients: The coefficients of the symbol.
-        :param pivot_index: The index of the pivot symbol.
-        """
-
-        # We found a "1" that nobody else had as pivot, we now
-        # subtract this packet from other coded packets
-        # - if they have a "1" at our pivot position
-        for index in range(self.symbols):
-
-            if index == pivot_index:
-                # We cannot backward substitute into our self
-                continue
-
-            if self.is_symbol_decoded(index):
-                # We know that we have no non-zero elements
-                # outside the pivot position.
-                continue
-
-            if self.is_symbol_missing(index):
-                # We do not have a symbol yet here
-                continue
-
-            coefficient = self.field.get_value(self.coefficients(index), pivot_index)
-
-            if coefficient == 0:
-                continue
-
-            # Update symbol and corresponding vector
-            self.field.vector_multiply_subtract_into(
-                self.coefficients(index), coefficients, coefficient
-            )
-            self.field.vector_multiply_subtract_into(
-                self.symbol_data(index), symbol_data, coefficient
-            )
-
-    def __normalize(self, symbol_data: bytearray, coefficients: bytearray, index: int):
-        """
-        Normalize the given symbol.
-
-        :param symbol_data: The data of the symbol.
-        :param coefficients: The coefficients of the symbol.
-        :param index: The index of the symbol.
-        """
-        if self.field.is_binary():
-            # Binary fields are already normalized
-            return
-
-        coefficient = self.field.get_value(coefficients, index)
-
-        inverted_coefficient = self.field.invert(coefficient)
-
-        self.field.vector_multiply_into(
-            coefficients,
-            inverted_coefficient,
-        )
-
-        self.field.vector_multiply_into(symbol_data, inverted_coefficient)
-
-    def __swap_decode(self, symbol_data: bytearray, index: int):
-        """
-        Swap the given symbol with an existing coded symbol.
-
-        :param symbol_data: The data of the symbol.
-        :param index: The index of the symbol.
-        """
-        # extract symbol and coefficients and set the symbol as missing
-        symbol_i = self.symbol_data(index)
-        coefficients_i = self.coefficients(index)
-        self._symbol_status[index] = Decoder.SymbolStatus.MISSING
-        self._rank -= 1
-
-        # Subtract the new pivot symbol
-        self.field.set_value(coefficients_i, index, 0)
-        # Note: add is the same as subtract
-        self.field.vector_add_into(symbol_i, symbol_data)
-
-        # Process the new coded symbol: we know that it must
-        # contain a larger pivot id than the current (unless it is reduced
-        # to all zeroes).
-        self.decode_symbol(symbol_i, coefficients_i)
 
     def __is_coefficients_decoded(self, index: int):
         """
@@ -398,15 +305,41 @@ class Decoder:
         :param index: The index of the coefficients.
         :return: True if the coefficients are decoded, False otherwise.
         """
-        coefficients = self.coefficients(index)
+        coefficients = self._coefficients[index]
         if coefficients is None:
             return False
 
-        for i in range(self.symbols):
+        for i, coefficient in coefficients:
             if i == index:
-                continue
+                if coefficient != 1:
+                    return False
 
-            if self.field.get_value(coefficients, i) != 0:
+            if coefficient != 0:
                 return False
 
         return True
+
+    def __store(self, index: int, coefficients: Vector, symbol_data: Vector):
+        """
+        Store the given coefficients and symbol data.
+
+        :param index: The index of the symbol.
+        :param coefficients: The coefficients of the symbol.
+        :param symbol_data: The data of the symbol.
+        """
+        if not self.is_symbol_missing(index):
+            raise ValueError(f"Symbol {index} is not missing")
+        self._symbol_status[index] = Decoder.SymbolStatus.PARTIALLY_DECODED
+        self._symbols_data[index] = symbol_data
+        self._coefficients[index] = coefficients
+        self._rank += 1
+
+    def __str__(self):
+        result = []
+        for index, coefficients in enumerate(self._coefficients):
+            if coefficients is None:
+                result.append(f"{index :2d}: None")
+            else:
+                result.append(f"{index :2d}: {str(coefficients)}")
+
+        return "Decoder({},\n{}\n)".format(self._rank, "\n".join(result))

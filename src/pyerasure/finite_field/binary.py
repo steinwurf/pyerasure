@@ -77,13 +77,9 @@ class Binary:
         return lhs ^ rhs
 
     @classmethod
-    def divide(cls, lhs: int, rhs: int) -> int:
-        """Divide two elements."""
-        if lhs < 0 or lhs > cls.max_value:
-            raise ValueError("lhs must be 0 or 1")
-        if rhs < 0 or rhs > cls.max_value:
-            raise ValueError("rhs must be 0 or 1")
-        return lhs
+    def invert(cls, lhs: int, rhs: int) -> int:
+        """Invert an element."""
+        raise NotImplementedError("invert not implemented for binary field")
 
     @classmethod
     def vector_add_into(cls, x: bytearray, y: bytes):
@@ -141,3 +137,7 @@ class Binary:
         assert x is not None
         assert y is not None
         cls.vector_multiply_add_into(x, y, c)
+
+    def __repr__(self) -> str:
+        """Return a string representation of the field."""
+        return self.__class__.__name__

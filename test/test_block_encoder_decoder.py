@@ -89,9 +89,13 @@ class TestBlockEncodeDecode(unittest.TestCase):
                     continue
 
                 decoder.decode_symbol(symbol, bytearray(coefficients))
-
+        print(decoder)
+        not_equal = []
         for index in range(symbols):
-            self.assertEqual(encoder.symbol_data(index), decoder.symbol_data(index))
+            if encoder.symbol_data(index) != decoder.symbol_data(index):
+                not_equal.append(index)
+        self.assertEqual([], not_equal)
+
         data_out = decoder.block_data()
         self.assertEqual(len(data_in), len(data_out))
         self.assertEqual(data_in, data_out)

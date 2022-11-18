@@ -150,3 +150,7 @@ class Binary4:
         assert x is not None
         assert y is not None
         self.vector_multiply_add_into(x, y, c)
+
+    def __repr__(self) -> str:
+        """Return a string representation of the field."""
+        return self.__class__.__name__
