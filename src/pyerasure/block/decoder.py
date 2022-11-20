@@ -169,11 +169,11 @@ class Decoder:
                              encoding performed on the symbol.
         """
         self.__decode_symbol(
-            Vector(self.field, coefficients, self.symbols),
             Vector(self.field, symbol_data),
+            Vector(self.field, coefficients, self.symbols),
         )
 
-    def __decode_symbol(self, coefficients: Vector, symbol_data: Vector):
+    def __decode_symbol(self, symbol_data: Vector, coefficients: Vector):
 
         pivot_index = None
 
@@ -188,8 +188,10 @@ class Decoder:
                     pivot_index = index
                     # Binary fields are already normalized
                     if not self.field.is_binary():
-                        coefficients *= ~coefficients[index]
-                        symbol_data *= ~coefficients[index]
+                        # Normalize the coefficients
+                        inverted_coefficient = ~coefficient
+                        coefficients *= inverted_coefficient
+                        symbol_data *= inverted_coefficient
                 continue
 
             coefficients -= self._coefficients[index] * coefficient
@@ -211,7 +213,7 @@ class Decoder:
             if self.is_symbol_missing(index):
                 continue
 
-            coefficient = self._coefficients[index][index]
+            coefficient = self._coefficients[index][pivot_index]
             if coefficient == 0:
                 continue
 
@@ -249,13 +251,13 @@ class Decoder:
 
             # Subtract the new pivot symbol
             coefficients_i[0] = 0
-            symbol_i -= symbol_data
+            symbol_i -= Vector(self.field, symbol_data)
 
             # Process the new coded symbol: we know that it must
             # contain a larger pivot id than the current (unless it is reduced
             # to all zeroes which is not possible as that would mean it was
             # already decoded).
-            self.decode_symbol(symbol_i, coefficients_i)
+            self.__decode_symbol(symbol_i, coefficients_i)
 
         self._rank += 1
 

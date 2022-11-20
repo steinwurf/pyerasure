@@ -98,7 +98,9 @@ class Vector:
         return f"Vector<{self.field}>, {self.data}, {self.offset}, {self.elements}"
 
     def __iadd__(self, other: Vector) -> Vector:
-        self.field.vector_add_into(self.data, other.data)
+        self.field.vector_add_into(memoryview(self.data)[: len(other.data)], other.data)
+        if len(self.data) < len(other.data):
+            self.data.extend(memoryview(other.data)[len(other.data) :])
         return self
 
     def __add__(self, other: Vector) -> Vector:

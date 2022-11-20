@@ -13,8 +13,9 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
-from typing import Union
-from pyerasure import finite_field
+from typing import Union, Optional
+
+from ..finite_field import Binary, Binary4, Binary8, Vector
 
 
 class Encoder:
@@ -22,7 +23,7 @@ class Encoder:
 
     def __init__(
         self,
-        field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
+        field: Union[Binary, Binary4, Binary8],
         symbols: int,
         symbol_bytes: int,
     ):
@@ -37,7 +38,7 @@ class Encoder:
         self._symbols = symbols
         self._symbol_bytes = symbol_bytes
         self._rank = 0
-        self._symbols_data = [None] * symbols
+        self._symbols_data: list[Optional[Vector]] = [None] * symbols
 
     @property
     def symbols(self) -> int:
@@ -50,9 +51,7 @@ class Encoder:
         return self._symbol_bytes
 
     @property
-    def field(
-        self,
-    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
+    def field(self) -> Union[Binary, Binary4, Binary8]:
         """The chosen finite field."""
         return self._field
 
@@ -79,7 +78,7 @@ class Encoder:
             raise ValueError(f"Invalid symbol index. {index}")
         if index != self.rank:
             raise ValueError("Symbols must be set in order.")
-        self._symbols_data[index] = symbol_data
+        self._symbols_data[index] = Vector(self.field, symbol_data)
         self._rank += 1
 
     def set_symbols(self, block_data: bytes):
@@ -117,6 +116,17 @@ class Encoder:
         """
         if index >= self.symbols:
             raise ValueError("Invalid symbol index.")
+        return self.__symbol_data(index).data
+
+    def __symbol_data(self, index: int) -> Vector:
+        """
+        Get the data of a symbol.
+
+        :param index: The index of the symbol.
+        :return: The data of the symbol.
+        """
+        if index >= self.symbols:
+            raise ValueError("Invalid symbol index.")
         return self._symbols_data[index]
 
     def encode_symbol(self, coefficients: bytes) -> bytearray:
@@ -127,17 +137,32 @@ class Encoder:
                              encoding.
         :return: The encoded symbol.
         """
-        encoded_symbol = bytearray(self.symbol_bytes)
-        for index in range(self.rank):
-            coefficient = self.field.get_value(coefficients, index)
-            if coefficient == 0:
-                continue
+        return self.__encode_symbol(Vector(self.field, coefficients)).data
+
+    def __encode_symbol(self, coefficients: Vector) -> bytearray:
+        """
+        Encode a symbol based on the given coefficients.
+
+        :param coefficients: The coding coefficients that describe the
+                             encoding.
+        :return: The encoded symbol.
+        """
+        written = 0
+        symbols = []
+        for index in range(self.symbols):
 
             if not self.is_symbol_set(index):
                 raise ValueError(f"Symbol not set: {index}")
 
-            self.field.vector_multiply_add_into(
-                encoded_symbol, self.symbol_data(index), coefficient
-            )
+            coefficient = coefficients[index]
 
+            if coefficient == 0:
+                continue
+            symbol_data = self.__symbol_data(index)
+            symbols.append((coefficient, symbol_data))
+            written = max(written, len(symbol_data))
+
+        encoded_symbol = Vector.allocate(self.field, written)
+        for coefficient, symbol_data in symbols:
+            encoded_symbol += symbol_data * coefficient
         return encoded_symbol

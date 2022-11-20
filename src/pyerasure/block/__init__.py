@@ -15,4 +15,4 @@
 
 
 from .encoder import Encoder
-from .decoder_new import Decoder
+from .decoder import Decoder

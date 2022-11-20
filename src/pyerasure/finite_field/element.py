@@ -35,18 +35,20 @@ class Element:
         return f"Element<{self.field}>, {self.value})"
 
     def __add__(self, other: Element) -> Element:
-        self.field.add(self.value, other.value)
-        return self
+        assert self.field == other.field
+        return Element(self.field, self.field.add(self.value, other.value))
 
     def __sub__(self, other: Element) -> Element:
+        assert self.field == other.field
         return self.__add__(other)
 
     def __invert__(self) -> Element:
-        self.field.invert(self.value)
-        return self
+        return Element(self.field, self.field.invert(self.value))
 
     def __eq__(self, other: Union[Element, int]) -> bool:
         if isinstance(other, Element):
+            if self.field != other.field:
+                return False
             return self.value == other.value
         return self.value == other
 
