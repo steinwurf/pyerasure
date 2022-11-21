@@ -14,7 +14,7 @@
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
 from typing import Union, Tuple
-from pyerasure import finite_field
+from ...finite_field import Binary4, Binary8
 
 
 class RSCauchy:
@@ -22,9 +22,7 @@ class RSCauchy:
     A Reed-Solomon-Cauchy coefficients generator
     """
 
-    def __init__(
-        self, field: Union[finite_field.Binary4, finite_field.Binary8], symbols
-    ):
+    def __init__(self, field: Union[Binary4, Binary8], symbols):
         """
         The Reed-Solomon-Cauchy generator constructor.
 
@@ -53,7 +51,7 @@ class RSCauchy:
         return self._symbols
 
     @property
-    def field(self) -> Union[finite_field.Binary4, finite_field.Binary8]:
+    def field(self) -> Union[Binary4, Binary8]:
         """The chosen finite field."""
         return self._field
 

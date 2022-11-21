@@ -263,7 +263,9 @@ class Decoder:
 
         # Store the symbol
         self._symbols_data[index] = Vector(self.field, symbol_data)
-        self._coefficients[index] = Vector.allocate(self.field, self.symbols)
+        self._coefficients[index] = Vector.allocateCoefficients(
+            self.field, self.symbols
+        )
         self._coefficients[index][index] = 1
         self._symbol_status[index] = Decoder.SymbolStatus.DECODED
 
@@ -283,10 +285,8 @@ class Decoder:
 
     def __recode_symbol(self, coefficients_in: Vector) -> Tuple[Vector, Vector]:
 
-        symbol_data = Vector.allocate(
-            self.field, self.field.bytes_to_elements(self.symbol_bytes)
-        )
-        coefficients = Vector.allocate(self.field, self.symbols)
+        symbol_data = Vector.allocateBytes(self.field, self.symbol_bytes)
+        coefficients = Vector.allocateCoefficients(self.field, self.symbols)
 
         for index, coefficient in coefficients_in:
 

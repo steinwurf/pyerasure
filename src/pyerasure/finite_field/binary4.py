@@ -13,6 +13,8 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from __future__ import annotations
+
 from typing import Final
 
 from . import FullTable
@@ -45,7 +47,7 @@ class Binary4:
     @classmethod
     def elements_to_bytes(cls, elements: int) -> int:
         """Convert the number of elements to the number of bytes."""
-        return (elements + (Binary4.elements_per_byte - 1)) // Binary4.elements_per_byte
+        return (abs(elements) + (Binary4.elements_per_byte - 1)) // Binary4.elements_per_byte
 
     @classmethod
     def bytes_to_elements(cls, bytes: int) -> int:
@@ -154,3 +156,11 @@ class Binary4:
     def __repr__(self) -> str:
         """Return a string representation of the field."""
         return self.__class__.__name__
+
+    def __eq__(self, other: Binary4) -> bool:
+        """Check if two fields are equal."""
+        return self.__class__ == other.__class__ and self._prime == other._prime
+
+    def __ne__(self, other: object) -> bool:
+        """Check if two fields are not equal."""
+        return not self.__eq__(other)

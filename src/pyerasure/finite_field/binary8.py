@@ -13,6 +13,7 @@
 # with the license agreement terms provided with the Software
 # See accompanying file LICENSE.rst or https://www.steinwurf.com/license
 
+from __future__ import annotations
 from typing import Final
 
 from . import FullTable
@@ -133,3 +134,11 @@ class Binary8:
     def __repr__(self) -> str:
         """Return a string representation of the field."""
         return self.__class__.__name__
+
+    def __eq__(self, other: Binary8) -> bool:
+        """Check if two fields are equal."""
+        return self.__class__ == other.__class__ and self._prime == other._prime
+
+    def __ne__(self, other: object) -> bool:
+        """Check if two fields are not equal."""
+        return not self.__eq__(other)

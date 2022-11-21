@@ -16,7 +16,7 @@
 from typing import Union
 import pyerasure.block
 import random
-from pyerasure import finite_field
+from ...finite_field import Binary, Binary4, Binary8
 
 
 class RandomUniform:
@@ -26,7 +26,7 @@ class RandomUniform:
 
     def __init__(
         self,
-        field: Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8],
+        field: Union[Binary, Binary4, Binary8],
         symbols,
     ):
         """
@@ -45,9 +45,7 @@ class RandomUniform:
         return self._symbols
 
     @property
-    def field(
-        self,
-    ) -> Union[finite_field.Binary, finite_field.Binary4, finite_field.Binary8]:
+    def field(self) -> Union[Binary, Binary4, Binary8]:
         """The chosen finite field."""
         return self._field
 

@@ -83,6 +83,10 @@ class Range:
             min(self.upper_bound, other.upper_bound),
         )
 
+    def intersects(self, other: Range) -> bool:
+        """Check if the range intersects with another range."""
+        return not self.intersect(other).empty()
+
     def __len__(self) -> int:
         return self.upper_bound - self.lower_bound
 

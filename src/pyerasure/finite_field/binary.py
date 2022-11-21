@@ -36,12 +36,14 @@ class Binary:
     @classmethod
     def elements_to_bytes(cls, elements: int) -> int:
         """Convert the number of elements to the number of bytes."""
-        return (elements + (Binary.elements_per_byte - 1)) // Binary.elements_per_byte
+        return (
+            abs(elements) + (Binary.elements_per_byte - 1)
+        ) // Binary.elements_per_byte
 
     @classmethod
     def bytes_to_elements(cls, bytes: int) -> int:
         """Convert the number of bytes to the number of elements."""
-        return bytes * Binary.elements_per_byte
+        return abs(bytes) * Binary.elements_per_byte
 
     @classmethod
     def get_value(cls, elements: bytes, index: int) -> int:
@@ -137,6 +139,14 @@ class Binary:
         assert x is not None
         assert y is not None
         cls.vector_multiply_add_into(x, y, c)
+
+    def __eq__(self, other) -> bool:
+        """Check if two fields are equal."""
+        return self.__class__ == other.__class__
+
+    def __ne__(self, other: object) -> bool:
+        """Check if two fields are not equal."""
+        return not self.__eq__(other)
 
     def __repr__(self) -> str:
         """Return a string representation of the field."""

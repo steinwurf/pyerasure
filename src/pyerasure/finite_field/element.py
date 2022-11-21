@@ -28,6 +28,12 @@ class Element:
         :param field: The field to use.
         :param value: The value.
         """
+        if value < 0:
+            raise ValueError("Value must be positive")
+
+        if value > field.max_value:
+            raise ValueError("Value must be less or equal field max value")
+
         self.field = field
         self.value = value
 

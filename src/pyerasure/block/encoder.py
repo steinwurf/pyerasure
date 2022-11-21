@@ -160,9 +160,9 @@ class Encoder:
                 continue
             symbol_data = self.__symbol_data(index)
             symbols.append((coefficient, symbol_data))
-            written = max(written, len(symbol_data))
+            written = max(written, symbol_data.bytes)
 
-        encoded_symbol = Vector.allocate(self.field, written)
+        encoded_symbol = Vector.allocateBytes(self.field, written)
         for coefficient, symbol_data in symbols:
             encoded_symbol += symbol_data * coefficient
         return encoded_symbol
