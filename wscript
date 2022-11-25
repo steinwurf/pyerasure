@@ -131,7 +131,8 @@ def docs(ctx):
     """Build the documentation in a virtualenv"""
     if ctx.options.cloudflare_auth:
         shutil.rmtree("./functions", ignore_errors=True)
-        os.system("git clone git@github.com:steinwurf/cloudflare-auth.git")
+        ctx.exec_command("git clone git@github.com:steinwurf/cloudflare-auth.git")
+        ctx.exec_command("git checkout 1.0.0", cwd="cloudflare-auth")
         shutil.copytree('cloudflare-auth/functions', './functions')
         shutil.rmtree("./cloudflare-auth", ignore_errors=True)
 
