@@ -112,7 +112,7 @@ def main():
                 recoder.decode_symbol(symbol, bytearray(coefficients))
                 print(f" - decoded, rank now {recoder.rank}")
 
-        if recoder.rank != 0 and coefficients:
+        if recoder.rank != 0:
             print("recoded symbol", end="")
             recoding_coefficients = generator.generate_recode(recoder)
             symbol, coefficients = recoder.recode_symbol(
