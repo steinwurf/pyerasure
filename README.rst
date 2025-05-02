@@ -23,12 +23,19 @@ What it is:
 
 * A tool for learning erasure codes
 
+License
+-------
+
+This project is licensed under the Steinwurf ApS research license. See the
+`LICENSE`_ file for details.
+
+.. _LICENSE: LICENSE.rst
+
 Installation
 ------------
 
-1. Obtain a Steinwurf ApS research license (see https://www.steinwurf.com/license/)
-2. Setup your Github SSH key (see https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh)
-3. Install the ``pyerasure`` tool using ``pip`` and ``git/ssh``::
+1. Setup your Github SSH key (see https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh)
+2. Install the ``pyerasure`` tool using ``pip`` and ``git/ssh``::
 
       python3 -m pip install git+ssh://git@github.com/steinwurf/pyerasure@[TAG]
 
@@ -37,6 +44,6 @@ Installation
       The ``[TAG]`` should be replaced with the desired version or checksum
       of the tool.
 
-4. Run the ``pyerasure`` hello world example::
+3. Run the ``pyerasure`` hello world example::
 
       python3 examples/hello_world.py
